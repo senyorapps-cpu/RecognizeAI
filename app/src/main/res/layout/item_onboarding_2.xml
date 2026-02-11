@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
+
+    <!-- Spacer for skip button area -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="64dp" />
+
+    <!-- Illustration area - Photo cards -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <!-- Outer circle -->
+        <View
+            android:layout_width="340dp"
+            android:layout_height="340dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_circle_border" />
+
+        <!-- Left card (rotated -15deg) -->
+        <LinearLayout
+            android:layout_width="160dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center"
+            android:layout_marginStart="0dp"
+            android:layout_marginBottom="20dp"
+            android:translationX="-40dp"
+            android:translationY="20dp"
+            android:rotation="-15"
+            android:background="@drawable/bg_photo_card"
+            android:elevation="4dp"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <ImageView
+                android:id="@+id/imgCard1"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@drawable/bg_photo_placeholder"
+                android:scaleType="centerCrop"
+                android:alpha="0.8"
+                android:contentDescription="Beach" />
+
+            <View
+                android:layout_width="110dp"
+                android:layout_height="8dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_text_line" />
+
+            <View
+                android:layout_width="70dp"
+                android:layout_height="8dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_text_line" />
+
+        </LinearLayout>
+
+        <!-- Right card (rotated 12deg) -->
+        <FrameLayout
+            android:layout_width="160dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center"
+            android:translationX="40dp"
+            android:translationY="-10dp"
+            android:rotation="12"
+            android:elevation="6dp"
+            android:clipChildren="false">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_photo_card"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <ImageView
+                    android:id="@+id/imgCard2"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:background="@drawable/bg_photo_placeholder"
+                    android:scaleType="centerCrop"
+                    android:alpha="0.8"
+                    android:contentDescription="Italy" />
+
+                <View
+                    android:layout_width="90dp"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_text_line" />
+
+                <View
+                    android:layout_width="50dp"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_text_line" />
+
+            </LinearLayout>
+
+            <!-- Rome tag -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="-12dp"
+                android:layout_marginEnd="-12dp"
+                android:background="@drawable/bg_gold_tag"
+                android:elevation="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@android:drawable/ic_dialog_map"
+                    android:tint="@color/deep_blue"
+                    android:contentDescription="Location" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/rome"
+                    android:textColor="@color/deep_blue"
+                    android:textSize="10sp"
+                    android:fontFamily="@font/plus_jakarta_sans_bold" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <!-- Center card (front, no rotation) -->
+        <FrameLayout
+            android:layout_width="180dp"
+            android:layout_height="220dp"
+            android:layout_gravity="center"
+            android:elevation="10dp"
+            android:clipChildren="false">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_photo_card"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <ImageView
+                    android:id="@+id/imgCard3"
+                    android:layout_width="match_parent"
+                    android:layout_height="140dp"
+                    android:background="@drawable/bg_photo_placeholder"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Kyoto" />
+
+                <View
+                    android:layout_width="130dp"
+                    android:layout_height="10dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_text_line_dark" />
+
+                <View
+                    android:layout_width="90dp"
+                    android:layout_height="10dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_text_line" />
+
+            </LinearLayout>
+
+            <!-- AI Generated tag -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:layout_marginTop="-16dp"
+                android:layout_marginStart="-16dp"
+                android:background="@drawable/bg_gold_tag"
+                android:elevation="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@android:drawable/btn_star_big_on"
+                    android:tint="@color/deep_blue"
+                    android:contentDescription="AI" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/ai_generated"
+                    android:textColor="@color/deep_blue"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/plus_jakarta_sans_bold" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <!-- Info card bottom right -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:translationX="80dp"
+            android:translationY="100dp"
+            android:elevation="12dp"
+            android:background="@drawable/bg_info_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/bg_gold_icon_circle">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_dialog_map"
+                        android:tint="@color/gold_accent"
+                        android:contentDescription="Map" />
+
+                </FrameLayout>
+
+                <View
+                    android:layout_width="64dp"
+                    android:layout_height="8dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_text_line" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/bg_gold_icon_circle">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_my_calendar"
+                        android:tint="@color/gold_accent"
+                        android:contentDescription="Calendar" />
+
+                </FrameLayout>
+
+                <View
+                    android:layout_width="80dp"
+                    android:layout_height="8dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_text_line" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- Bottom content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="32dp"
+        android:paddingBottom="48dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/onboarding_title_2"
+            android:textColor="@color/deep_blue"
+            android:textSize="36sp"
+            android:fontFamily="@font/plus_jakarta_sans_bold"
+            android:gravity="center"
+            android:letterSpacing="-0.02"
+            android:lineSpacingMultiplier="1.1" />
+
+        <TextView
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/onboarding_desc_2"
+            android:textColor="@color/deep_blue_70"
+            android:textSize="16sp"
+            android:fontFamily="@font/plus_jakarta_sans_medium"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.4" />
+
+        <!-- Page indicators -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="40dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_circle_border" />
+
+            <View
+                android:layout_width="32dp"
+                android:layout_height="10dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_gold_tag" />
+
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_circle_border" />
+
+        </LinearLayout>
+
+        <!-- Next button -->
+        <FrameLayout
+            android:id="@+id/btnNext"
+            android:layout_width="match_parent"
+            android:layout_height="68dp"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_gold_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/next"
+                    android:textColor="@color/deep_blue"
+                    android:textSize="20sp"
+                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.05" />
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginStart="12dp"
+                    android:src="@android:drawable/ic_media_play"
+                    android:tint="@color/deep_blue"
+                    android:contentDescription="Next" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="32dp" />
+
+</LinearLayout>

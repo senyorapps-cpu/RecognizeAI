@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- Full-screen camera preview background -->
+    <ImageView
+        android:id="@+id/imgCameraPreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
+
+    <!-- Dark overlay on top of camera preview -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000" />
+
+    <!-- ==================== TOP BAR ==================== -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <!-- Close button (left) -->
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_camera_close_btn"
+            android:src="@drawable/ic_close"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            app:tint="@color/white"
+            android:contentDescription="Close" />
+
+        <!-- Match Confirmed badge (center) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/bg_match_badge"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="16dp">
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/bg_check_circle_green" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:text="@string/match_confirmed"
+                android:textColor="#34C759"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Settings button (right) -->
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_camera_close_btn"
+            android:src="@drawable/ic_settings"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            app:tint="@color/white"
+            android:contentDescription="Settings" />
+    </RelativeLayout>
+
+    <!-- ==================== CENTER: SCANNING VIEWFINDER ==================== -->
+    <FrameLayout
+        android:layout_width="280dp"
+        android:layout_height="280dp"
+        android:layout_gravity="center">
+
+        <!-- Green inner border -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="16dp"
+            android:background="@drawable/bg_scanning_inner_border" />
+
+        <!-- Top-left corner (horizontal) -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="3dp"
+            android:layout_gravity="start|top"
+            android:background="#34C759" />
+
+        <!-- Top-left corner (vertical) -->
+        <View
+            android:layout_width="3dp"
+            android:layout_height="40dp"
+            android:layout_gravity="start|top"
+            android:background="#34C759" />
+
+        <!-- Top-right corner (horizontal) -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="3dp"
+            android:layout_gravity="end|top"
+            android:background="#34C759" />
+
+        <!-- Top-right corner (vertical) -->
+        <View
+            android:layout_width="3dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end|top"
+            android:background="#34C759" />
+
+        <!-- Bottom-left corner (horizontal) -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="3dp"
+            android:layout_gravity="start|bottom"
+            android:background="#34C759" />
+
+        <!-- Bottom-left corner (vertical) -->
+        <View
+            android:layout_width="3dp"
+            android:layout_height="40dp"
+            android:layout_gravity="start|bottom"
+            android:background="#34C759" />
+
+        <!-- Bottom-right corner (horizontal) -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="3dp"
+            android:layout_gravity="end|bottom"
+            android:background="#34C759" />
+
+        <!-- Bottom-right corner (vertical) -->
+        <View
+            android:layout_width="3dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end|bottom"
+            android:background="#34C759" />
+
+        <!-- Green glowing data nodes at various coordinates -->
+        <View
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="60dp"
+            android:layout_marginTop="50dp"
+            android:background="@drawable/bg_data_node" />
+
+        <View
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="190dp"
+            android:layout_marginTop="70dp"
+            android:background="@drawable/bg_data_node" />
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="100dp"
+            android:layout_marginTop="120dp"
+            android:background="@drawable/bg_data_node" />
+
+        <View
+            android:layout_width="7dp"
+            android:layout_height="7dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="210dp"
+            android:layout_marginTop="160dp"
+            android:background="@drawable/bg_data_node" />
+
+        <View
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="50dp"
+            android:layout_marginTop="200dp"
+            android:background="@drawable/bg_data_node" />
+
+        <View
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="160dp"
+            android:layout_marginTop="220dp"
+            android:background="@drawable/bg_data_node" />
+
+        <!-- Match text overlay (centered in viewfinder) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <!-- Green check circle -->
+            <FrameLayout
+                android:layout_width="36dp"
+                android:layout_height="36dp">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_check_circle_green" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_check"
+                    app:tint="@color/white"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <!-- "Match Found" text -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:text="@string/match_found"
+                android:textColor="#34C759"
+                android:textSize="16sp" />
+
+            <!-- "Empire State Building" text -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:text="@string/empire_state_building"
+                android:textColor="@color/white"
+                android:textSize="22sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ==================== BOTTOM CONTROLS ==================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="120dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp">
+
+        <!-- Gallery button (left) -->
+        <LinearLayout
+            android:id="@+id/btnGallery"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp">
+
+                <ImageView
+                    android:id="@+id/imgGalleryPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_gallery_preview"
+                    android:padding="3dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:text="@string/gallery"
+                android:textColor="@color/white"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Capture button (center) with outer ring -->
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center">
+
+            <!-- Outer ring -->
+            <View
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_capture_ring" />
+
+            <!-- Inner gold capture button -->
+            <ImageButton
+                android:id="@+id/btnCapture"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_capture_button"
+                android:contentDescription="Capture"
+                android:src="@android:color/transparent" />
+        </FrameLayout>
+
+        <!-- Flash button (right) -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:id="@+id/btnFlash"
+                android:layout_width="48dp"
+                android:layout_height="48dp">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_flash_btn" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_flash_on"
+                    app:tint="@color/white"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:text="@string/flash"
+                android:textColor="@color/white"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ==================== BOTTOM NAVIGATION BAR ==================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="24dp"
+        android:background="@drawable/bg_camera_nav"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Explore tab -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_explore"
+                app:tint="#80FFFFFF"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:text="@string/nav_explore"
+                android:textColor="#80FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Capture tab (active / gold) -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_camera"
+                app:tint="@color/gold_accent"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:text="@string/nav_capture"
+                android:textColor="@color/gold_accent"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- History tab -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_history"
+                app:tint="#80FFFFFF"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:text="@string/nav_history"
+                android:textColor="#80FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Profile tab -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_person"
+                app:tint="#80FFFFFF"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:text="@string/nav_profile"
+                android:textColor="#80FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>

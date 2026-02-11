@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="deep_blue">#FF1C5B9E</color>
+    <color name="deep_blue_70">#B31C5B9E</color>
+    <color name="deep_blue_50">#801C5B9E</color>
+    <color name="deep_blue_20">#331C5B9E</color>
+    <color name="deep_blue_10">#1A1C5B9E</color>
+    <color name="deep_blue_5">#0D1C5B9E</color>
+    <color name="gold_accent">#FFDFC623</color>
+    <color name="gold_accent_40">#66DFC623</color>
+    <color name="gold_accent_20">#33DFC623</color>
+    <color name="light_sky">#FFF0F7FF</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="slate_100">#FFF1F5F9</color>
+    <color name="slate_200">#FFE2E8F0</color>
+    <color name="slate_900">#FF0F172A</color>
+    <color name="transparent">#00000000</color>
+</resources>

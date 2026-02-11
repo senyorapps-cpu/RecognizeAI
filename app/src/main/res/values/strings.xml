@@ -1,0 +1,111 @@
+<resources>
+    <string name="app_name">TripAI</string>
+
+    <!-- Onboarding Page 1 -->
+    <string name="onboarding_title_1">Explore the World</string>
+    <string name="onboarding_desc_1">Discover hidden secrets and cultural wonders through our AI-powered lens.</string>
+
+    <!-- Onboarding Page 2 -->
+    <string name="onboarding_title_2">Smart Journaling</string>
+    <string name="onboarding_desc_2">Automatically organize your photos into beautiful journals with AI details.</string>
+
+    <!-- Onboarding Page 3 -->
+    <string name="onboarding_title_3">Start Your Journey</string>
+    <string name="onboarding_desc_3">Capture your first memory and let AI tell the story.</string>
+
+    <!-- Onboarding Actions -->
+    <string name="skip">Skip</string>
+    <string name="next">Next</string>
+    <string name="get_started">Get Started</string>
+
+    <!-- Login -->
+    <string name="sign_in">Sign In</string>
+    <string name="welcome_back">Welcome back to Travel Snap AI</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="continue_as_guest">Continue as Guest</string>
+    <string name="language_english">English (US)</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="terms_of_service">Terms of Service</string>
+
+    <!-- Labels -->
+    <string name="ai_generated">AI Generated</string>
+    <string name="rome">Rome</string>
+
+    <!-- Home Page -->
+    <string name="explore_today">Explore Today</string>
+    <string name="location_info">Paris, France \u2022 24\u00B0C</string>
+    <string name="last_capture">Last Capture</string>
+    <string name="tap_to_view">Tap to view details</string>
+    <string name="top_places">Top Places</string>
+    <string name="view_all">View All</string>
+    <string name="paris">Paris</string>
+    <string name="venice">Venice</string>
+    <string name="london">London</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_saved">Saved</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Camera Page -->
+    <string name="match_confirmed">Match Confirmed</string>
+    <string name="match_found">Match Found</string>
+    <string name="empire_state_building">Empire State Building</string>
+    <string name="gallery">Gallery</string>
+    <string name="flash">Flash</string>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_capture">Capture</string>
+    <string name="nav_history">History</string>
+
+    <!-- Analyzing Page -->
+    <string name="identifying_landmark">Identifying Landmark\u2026</string>
+    <string name="analyzing_status">Analyzing structure and history\u2026</string>
+    <string name="structural_apex">Structural Apex</string>
+    <string name="lattice_pattern">Lattice Pattern Identified</string>
+    <string name="historical_match">Historical Match: 98.4%%</string>
+    <string name="base_geo">Base Geo-Coordinate</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Landmark Detail Page -->
+    <string name="discovery_report">Discovery Report</string>
+    <string name="the_colosseum">The Colosseum</string>
+    <string name="colosseum_location">Piazza del Colosseo, Rome, Italy</string>
+    <string name="year_built">Year Built</string>
+    <string name="year_built_value">80 AD</string>
+    <string name="status_label">Status</string>
+    <string name="unesco_site">UNESCO Site</string>
+    <string name="architect">Architect</string>
+    <string name="flavian_dynasty">Flavian Dynasty</string>
+    <string name="capacity">Capacity</string>
+    <string name="capacity_value">80,000 Seats</string>
+    <string name="ai_narrative">AI Narrative</string>
+    <string name="colosseum_text_1">The Colosseum, also known as the Flavian Amphitheatre, stands as the most iconic symbol of Imperial Rome. Completed in 80 AD under Emperor Titus, this architectural marvel was designed to showcase the absolute power of the empire.</string>
+    <string name="colosseum_quote">\u201CA testament to the grandeur and brutality of the Roman Empire, it remains the largest standing amphitheatre in the world.\u201D</string>
+    <string name="colosseum_text_2">Beyond its massive stone walls, the structure contained a complex system of vaults and corridors, allowing for the rapid entry and exit of thousands of spectators\u2014a precursor to modern stadium design.</string>
+    <string name="view_on_map">VIEW ON INTERACTIVE MAP</string>
+    <string name="refined_surroundings">Refined Surroundings</string>
+    <string name="all_places">All Places</string>
+    <string name="roman_forum">Roman Forum</string>
+    <string name="cultural_district">Cultural District</string>
+    <string name="palatine_hill">Palatine Hill</string>
+    <string name="ancient_ruins">Ancient Ruins</string>
+    <string name="arch_of_constantine">Arch of Constantine</string>
+    <string name="monuments">Monuments</string>
+    <string name="tap_to_rate">Tap to rate this place</string>
+    <string name="retake_photo">Retake Photo</string>
+    <string name="save_to_journal">Save to Journal</string>
+    <string name="add_to_trip">Add to Trip</string>
+
+    <!-- Saved Photos Page -->
+    <string name="saved_photos_title">Saved Photos</string>
+    <string name="chip_all">All</string>
+    <string name="chip_recent">Recent</string>
+    <string name="chip_landmarks">Landmarks</string>
+    <string name="chip_nature">Nature</string>
+    <string name="no_captures_yet">No captures yet</string>
+    <string name="take_first_photo">Snap your first landmark!</string>
+    <string name="no_saved_photos">No saved photos yet</string>
+    <string name="no_saved_photos_desc">Snap a landmark and save it to your journal</string>
+    <string name="pending_analysis">Pending Analysis</string>
+</resources>

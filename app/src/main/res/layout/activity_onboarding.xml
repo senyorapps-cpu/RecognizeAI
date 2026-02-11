@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_gradient">
+
+    <!-- Decorative background elements -->
+    <View
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="80dp"
+        android:alpha="0.2"
+        android:background="@drawable/bg_decorative_square"
+        android:rotation="45" />
+
+    <View
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="-20dp"
+        android:layout_marginBottom="160dp"
+        android:alpha="0.2"
+        android:background="@drawable/bg_decorative_circle" />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Skip button -->
+    <TextView
+        android:id="@+id/btnSkip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:text="@string/skip"
+        android:textColor="@color/deep_blue"
+        android:textSize="14sp"
+        android:fontFamily="@font/plus_jakarta_sans_bold"
+        android:letterSpacing="0.15"
+        android:textAllCaps="true" />
+
+</FrameLayout>

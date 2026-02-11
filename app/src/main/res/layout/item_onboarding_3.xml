@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
+
+    <!-- Spacer for skip button area (no skip on last page) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="64dp" />
+
+    <!-- Illustration area - Camera Lens -->
+    <FrameLayout
+        android:layout_width="320dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_gravity="center">
+
+        <!-- Outer circle border -->
+        <View
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_circle_border" />
+
+        <!-- Middle circle border -->
+        <View
+            android:layout_width="240dp"
+            android:layout_height="240dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_circle_border" />
+
+        <!-- Dashed gold circle -->
+        <View
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_circle_dashed_gold" />
+
+        <!-- Lens outer ring -->
+        <View
+            android:layout_width="192dp"
+            android:layout_height="192dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_lens_outer"
+            android:elevation="8dp" />
+
+        <!-- Lens mid ring -->
+        <View
+            android:layout_width="168dp"
+            android:layout_height="168dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_lens_mid"
+            android:elevation="9dp" />
+
+        <!-- Lens inner dark circle -->
+        <View
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_lens_inner"
+            android:elevation="10dp" />
+
+        <!-- Lens core reflection -->
+        <View
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_lens_core"
+            android:elevation="11dp" />
+
+        <!-- Gold dot decoration -->
+        <View
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="end"
+            android:layout_marginTop="60dp"
+            android:layout_marginEnd="50dp"
+            android:background="@drawable/bg_gold_icon_circle"
+            android:elevation="12dp" />
+
+        <!-- Small dot decoration -->
+        <View
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_gravity="start|bottom"
+            android:layout_marginBottom="100dp"
+            android:layout_marginStart="50dp"
+            android:background="@drawable/bg_circle_border" />
+
+    </FrameLayout>
+
+    <!-- Bottom content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="32dp"
+        android:paddingBottom="48dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/onboarding_title_3"
+            android:textColor="@color/deep_blue"
+            android:textSize="36sp"
+            android:fontFamily="@font/plus_jakarta_sans_bold"
+            android:gravity="center"
+            android:letterSpacing="-0.02"
+            android:lineSpacingMultiplier="1.1" />
+
+        <TextView
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/onboarding_desc_3"
+            android:textColor="@color/deep_blue_70"
+            android:textSize="16sp"
+            android:fontFamily="@font/plus_jakarta_sans_medium"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.4" />
+
+        <!-- Page indicators -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="40dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_circle_border" />
+
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_circle_border" />
+
+            <View
+                android:layout_width="32dp"
+                android:layout_height="10dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_gold_tag" />
+
+        </LinearLayout>
+
+        <!-- Get Started button -->
+        <FrameLayout
+            android:id="@+id/btnGetStarted"
+            android:layout_width="match_parent"
+            android:layout_height="68dp"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_gold_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/get_started"
+                android:textColor="@color/deep_blue"
+                android:textSize="20sp"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.15" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="32dp" />
+
+</LinearLayout>
