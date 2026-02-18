@@ -62,7 +62,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:text="@string/match_confirmed"
                 android:textColor="#34C759"
                 android:textSize="13sp" />
@@ -233,7 +233,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:text="@string/match_found"
                 android:textColor="#34C759"
                 android:textSize="16sp" />
@@ -243,7 +243,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/empire_state_building"
                 android:textColor="@color/white"
                 android:textSize="22sp" />
@@ -288,7 +288,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/gallery"
                 android:textColor="@color/white"
                 android:textSize="11sp" />
@@ -349,7 +349,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/flash"
                 android:textColor="@color/white"
                 android:textSize="11sp" />
@@ -389,7 +389,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/nav_explore"
                 android:textColor="#80FFFFFF"
                 android:textSize="10sp" />
@@ -414,7 +414,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:text="@string/nav_capture"
                 android:textColor="@color/gold_accent"
                 android:textSize="10sp" />
@@ -439,7 +439,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/nav_history"
                 android:textColor="#80FFFFFF"
                 android:textSize="10sp" />
@@ -464,7 +464,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/nav_profile"
                 android:textColor="#80FFFFFF"
                 android:textSize="10sp" />

@@ -16,6 +16,9 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.bumptech.glide.Glide
+import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import com.example.recognizeai.databinding.FragmentSavedPhotosBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +66,7 @@ class SavedPhotosFragment : Fragment() {
         val nearby3Category: String,
         val rating: Int,
         val createdAt: String,
+        val language: String = "en",
         val isPending: Boolean = false
     ) {
         fun extractCountry(): String {
@@ -79,6 +83,7 @@ class SavedPhotosFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
+        loadSavedItems()
     }
 
     override fun onResume() {
@@ -86,52 +91,117 @@ class SavedPhotosFragment : Fragment() {
         loadSavedItems()
     }
 
+    fun refreshData() {
+        loadSavedItems()
+    }
+
     private fun setupRecyclerView() {
-        adapter = SavedPhotosAdapter(filteredItems) { item ->
-            val intent = Intent(requireContext(), LandmarkDetailActivity::class.java).apply {
-                putExtra("server_id", item.serverId)
-                putExtra("photo_uri", item.imageUrl)
-                putExtra("name", item.name)
-                putExtra("location", item.location)
-                putExtra("year_built", item.yearBuilt)
-                putExtra("status", item.status)
-                putExtra("architect", item.architect)
-                putExtra("capacity", item.capacity)
-                putExtra("narrative_p1", item.narrativeP1)
-                putExtra("narrative_quote", item.narrativeQuote)
-                putExtra("narrative_p2", item.narrativeP2)
-                putExtra("nearby1_name", item.nearby1Name)
-                putExtra("nearby1_category", item.nearby1Category)
-                putExtra("nearby2_name", item.nearby2Name)
-                putExtra("nearby2_category", item.nearby2Category)
-                putExtra("nearby3_name", item.nearby3Name)
-                putExtra("nearby3_category", item.nearby3Category)
-                putExtra("rating", item.rating)
-                putExtra("from_saved", true)
-            }
-            startActivity(intent)
-        }
+        adapter = SavedPhotosAdapter(
+            items = filteredItems,
+            onClick = { item ->
+                val intent = Intent(requireContext(), LandmarkDetailActivity::class.java).apply {
+                    putExtra("server_id", item.serverId)
+                    putExtra("photo_uri", item.imageUrl)
+                    putExtra("name", item.name)
+                    putExtra("location", item.location)
+                    putExtra("year_built", item.yearBuilt)
+                    putExtra("status", item.status)
+                    putExtra("architect", item.architect)
+                    putExtra("capacity", item.capacity)
+                    putExtra("narrative_p1", item.narrativeP1)
+                    putExtra("narrative_quote", item.narrativeQuote)
+                    putExtra("narrative_p2", item.narrativeP2)
+                    putExtra("nearby1_name", item.nearby1Name)
+                    putExtra("nearby1_category", item.nearby1Category)
+                    putExtra("nearby2_name", item.nearby2Name)
+                    putExtra("nearby2_category", item.nearby2Category)
+                    putExtra("nearby3_name", item.nearby3Name)
+                    putExtra("nearby3_category", item.nearby3Category)
+                    putExtra("rating", item.rating)
+                    putExtra("language", item.language)
+                    putExtra("from_saved", true)
+                }
+                startActivity(intent)
+            },
+            onDelete = { item -> confirmDelete(item) }
+        )
 
         binding.recyclerSaved.layoutManager =
             StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
         binding.recyclerSaved.adapter = adapter
     }
 
+    private fun confirmDelete(item: SavedLandmark) {
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(R.layout.dialog_delete_confirm)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        dialog.findViewById<TextView>(R.id.btnDialogCancel).setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.findViewById<TextView>(R.id.btnDialogDelete).setOnClickListener {
+            dialog.dismiss()
+            deleteItem(item)
+        }
+        dialog.show()
+    }
+
+    private fun deleteItem(item: SavedLandmark) {
+        // Delete from server
+        if (item.serverId > 0) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val request = Request.Builder()
+                        .url("${SessionManager.BASE_URL}/api/landmarks/${item.serverId}")
+                        .delete()
+                        .build()
+                    client.newCall(request).execute().close()
+                    Log.d("SavedPhotos", "Deleted from server: ${item.serverId}")
+                } catch (e: Exception) {
+                    Log.e("SavedPhotos", "Failed to delete from server", e)
+                }
+            }
+        }
+
+        // Delete from local storage
+        val prefs = requireContext().getSharedPreferences("recognizeai_landmarks", android.content.Context.MODE_PRIVATE)
+        val arr = JSONArray(prefs.getString("landmarks", "[]"))
+        val newArr = JSONArray()
+        for (i in 0 until arr.length()) {
+            val obj = arr.getJSONObject(i)
+            val matchById = item.serverId > 0 && obj.optLong("server_id", -1L) == item.serverId
+            val matchByUri = obj.optString("photo_uri") == item.imageUrl
+            if (!matchById && !matchByUri) {
+                newArr.put(obj)
+            }
+        }
+        prefs.edit().putString("landmarks", newArr.toString()).apply()
+
+        // Remove from lists and refresh chips + grid
+        allItems.remove(item)
+        buildCountryChips()
+        applyFilter()
+    }
+
     private fun loadSavedItems() {
         val session = SessionManager(requireContext())
         val userId = session.userId
-
-        if (userId <= 0) {
-            // Guest user — load from local storage only
-            Log.d("SavedPhotos", "Guest user (userId=$userId), loading from LOCAL storage")
-            loadFromLocalStorage()
-            return
-        }
+        val deviceId = session.deviceId
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val url = if (userId > 0) {
+                    "${SessionManager.BASE_URL}/api/user/$userId/landmarks?device_id=$deviceId&saved=true"
+                } else {
+                    "${SessionManager.BASE_URL}/api/landmarks/by-device?device_id=$deviceId&saved=true"
+                }
+                Log.d("SavedPhotos", "Loading from server: $url")
                 val request = Request.Builder()
-                    .url("${SessionManager.BASE_URL}/api/user/$userId/landmarks?saved=true")
+                    .url(url)
                     .get()
                     .build()
 
@@ -167,7 +237,8 @@ class SavedPhotosFragment : Fragment() {
                             nearby3Name = obj.optString("nearby3_name"),
                             nearby3Category = obj.optString("nearby3_category"),
                             rating = obj.optInt("rating", 0),
-                            createdAt = obj.optString("created_at", "")
+                            createdAt = obj.optString("created_at", ""),
+                            language = obj.optString("language", "en")
                         )
                     )
                 }
@@ -194,7 +265,6 @@ class SavedPhotosFragment : Fragment() {
 
         for (i in 0 until arr.length()) {
             val obj = arr.getJSONObject(i)
-            if (!obj.optBoolean("is_saved", false)) continue
             items.add(
                 SavedLandmark(
                     serverId = obj.optLong("server_id", -1L),
@@ -216,6 +286,7 @@ class SavedPhotosFragment : Fragment() {
                     nearby3Category = obj.optString("nearby3_category", ""),
                     rating = obj.optInt("rating", 0),
                     createdAt = obj.optString("created_at", ""),
+                    language = obj.optString("language", "en"),
                     isPending = obj.optString("status", "") == "pending"
                 )
             )
@@ -317,7 +388,8 @@ class SavedPhotosFragment : Fragment() {
 
     class SavedPhotosAdapter(
         private val items: List<SavedLandmark>,
-        private val onClick: (SavedLandmark) -> Unit
+        private val onClick: (SavedLandmark) -> Unit,
+        private val onDelete: (SavedLandmark) -> Unit
     ) : RecyclerView.Adapter<SavedPhotosAdapter.ViewHolder>() {
 
         private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
@@ -327,7 +399,8 @@ class SavedPhotosFragment : Fragment() {
             val tvSavedName: TextView = itemView.findViewById(R.id.tvSavedName)
             val tvSavedDate: TextView = itemView.findViewById(R.id.tvSavedDate)
             val pendingOverlay: View = itemView.findViewById(R.id.pendingOverlay)
-            val tvPendingBadge: TextView = itemView.findViewById(R.id.tvPendingBadge)
+            val pendingBadgeContainer: View = itemView.findViewById(R.id.pendingBadgeContainer)
+            val btnDeleteItem: ImageView = itemView.findViewById(R.id.btnDeleteItem)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -348,23 +421,19 @@ class SavedPhotosFragment : Fragment() {
                 .centerCrop()
                 .into(holder.imgSaved)
 
+            holder.btnDeleteItem.setOnClickListener { onDelete(item) }
+
             if (item.isPending) {
-                holder.tvSavedName.text = holder.itemView.context.getString(R.string.pending_analysis)
-                holder.tvSavedDate.text = "Waiting for internet\u2026"
+                holder.tvSavedName.text = holder.itemView.context.getString(R.string.saved_offline)
+                holder.tvSavedDate.text = item.createdAt.substringBefore("T").ifEmpty { "" }
                 holder.pendingOverlay.visibility = View.VISIBLE
-                holder.tvPendingBadge.visibility = View.VISIBLE
-                holder.itemView.setOnClickListener {
-                    android.widget.Toast.makeText(
-                        holder.itemView.context,
-                        "This photo hasn't been analyzed yet",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                }
+                holder.pendingBadgeContainer.visibility = View.VISIBLE
+                holder.itemView.setOnClickListener { /* pending — no action */ }
             } else {
                 holder.tvSavedName.text = item.name
                 holder.tvSavedDate.text = item.createdAt.substringBefore("T").ifEmpty { "" }
                 holder.pendingOverlay.visibility = View.GONE
-                holder.tvPendingBadge.visibility = View.GONE
+                holder.pendingBadgeContainer.visibility = View.GONE
                 holder.itemView.setOnClickListener { onClick(item) }
             }
         }

@@ -56,7 +56,7 @@
             android:text="@string/sign_in"
             android:textColor="@color/deep_blue"
             android:textSize="36sp"
-            android:fontFamily="@font/plus_jakarta_sans_bold"
+            android:fontFamily="@font/inter_bold"
             android:gravity="center"
             android:letterSpacing="-0.02" />
 
@@ -68,7 +68,7 @@
             android:text="@string/welcome_back"
             android:textColor="@color/deep_blue_50"
             android:textSize="14sp"
-            android:fontFamily="@font/plus_jakarta_sans_medium" />
+            android:fontFamily="@font/inter_medium" />
 
         <!-- Buttons -->
         <LinearLayout
@@ -108,7 +108,7 @@
                         android:text="@string/continue_with_google"
                         android:textColor="@color/deep_blue"
                         android:textSize="18sp"
-                        android:fontFamily="@font/plus_jakarta_sans_semibold" />
+                        android:fontFamily="@font/inter_semibold" />
 
                 </LinearLayout>
 
@@ -145,7 +145,7 @@
                         android:text="@string/continue_as_guest"
                         android:textColor="@color/deep_blue"
                         android:textSize="18sp"
-                        android:fontFamily="@font/plus_jakarta_sans_bold" />
+                        android:fontFamily="@font/inter_bold" />
 
                 </LinearLayout>
 
@@ -166,27 +166,30 @@
 
         <!-- Language selector -->
         <LinearLayout
+            android:id="@+id/btnLanguage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingVertical="8dp">
+            android:paddingVertical="8dp"
+            android:background="?attr/selectableItemBackground">
 
             <ImageView
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:src="@android:drawable/ic_menu_mapmode"
+                android:src="@drawable/ic_language"
                 android:tint="@color/deep_blue_50"
                 android:contentDescription="Language" />
 
             <TextView
+                android:id="@+id/tvCurrentLanguage"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="@string/language_english"
                 android:textColor="@color/deep_blue_50"
                 android:textSize="14sp"
-                android:fontFamily="@font/plus_jakarta_sans_medium" />
+                android:fontFamily="@font/inter_medium" />
 
         </LinearLayout>
 
@@ -204,7 +207,7 @@
                 android:text="@string/privacy_policy"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="12sp"
-                android:fontFamily="@font/plus_jakarta_sans_medium" />
+                android:fontFamily="@font/inter_medium" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -220,7 +223,7 @@
                 android:text="@string/terms_of_service"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="12sp"
-                android:fontFamily="@font/plus_jakarta_sans_medium" />
+                android:fontFamily="@font/inter_medium" />
 
         </LinearLayout>
 

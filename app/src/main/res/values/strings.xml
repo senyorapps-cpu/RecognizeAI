@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TripAI</string>
+    <string name="app_name">TravelAI</string>
 
     <!-- Onboarding Page 1 -->
     <string name="onboarding_title_1">Explore the World</string>
@@ -35,6 +35,9 @@
     <string name="explore_today">Explore Today</string>
     <string name="location_info">Paris, France \u2022 24\u00B0C</string>
     <string name="last_capture">Last Capture</string>
+    <string name="your_latest_snap">Your Latest Snap</string>
+    <string name="see_history">See History</string>
+    <string name="view_details">View Details</string>
     <string name="tap_to_view">Tap to view details</string>
     <string name="top_places">Top Places</string>
     <string name="view_all">View All</string>
@@ -79,7 +82,9 @@
     <string name="flavian_dynasty">Flavian Dynasty</string>
     <string name="capacity">Capacity</string>
     <string name="capacity_value">80,000 Seats</string>
-    <string name="ai_narrative">AI Narrative</string>
+
+    <string name="listen_story">Listen to Story</string>
+
     <string name="colosseum_text_1">The Colosseum, also known as the Flavian Amphitheatre, stands as the most iconic symbol of Imperial Rome. Completed in 80 AD under Emperor Titus, this architectural marvel was designed to showcase the absolute power of the empire.</string>
     <string name="colosseum_quote">\u201CA testament to the grandeur and brutality of the Roman Empire, it remains the largest standing amphitheatre in the world.\u201D</string>
     <string name="colosseum_text_2">Beyond its massive stone walls, the structure contained a complex system of vaults and corridors, allowing for the rapid entry and exit of thousands of spectators\u2014a precursor to modern stadium design.</string>
@@ -108,4 +113,76 @@
     <string name="no_saved_photos">No saved photos yet</string>
     <string name="no_saved_photos_desc">Snap a landmark and save it to your journal</string>
     <string name="pending_analysis">Pending Analysis</string>
+    <string name="delete_confirm_title">Delete Landmark</string>
+    <string name="delete_confirm_message">Are you sure you want to delete this landmark?</string>
+    <string name="delete">Delete</string>
+
+    <!-- Language -->
+    <string name="choose_language">Choose Language</string>
+    <string name="language_label">Language</string>
+
+    <!-- Profile -->
+    <string name="profile_title">My Travel Hub</string>
+    <string name="profile_hello">Hello, %s!</string>
+    <string name="profile_hello_guest">Hello dear guest</string>
+    <string name="profile_subtitle_guest">Guest Explorer</string>
+    <string name="profile_subtitle_google">Google Account</string>
+    <string name="profile_total_snaps">Total Snaps</string>
+    <string name="profile_countries">Countries</string>
+    <string name="profile_journals">Journals</string>
+    <string name="profile_account_settings">Account Settings</string>
+    <string name="profile_subscription">Subscription</string>
+    <string name="profile_appearance">Appearance</string>
+    <string name="profile_support">Support</string>
+    <string name="profile_support_title">Need help with your snaps?</string>
+    <string name="profile_support_desc">Our support team is available 24/7</string>
+    <string name="profile_contact_us">Contact Us</string>
+    <string name="profile_logout">Logout Account</string>
+
+    <!-- Map -->
+    <string name="map_explore_ai">Explore with AI</string>
+    <string name="map_navigate">Navigate</string>
+    <string name="map_landmark">Landmark</string>
+    <string name="map_category_landmark">Landmark</string>
+    <string name="map_category_museum">Museum</string>
+    <string name="map_category_religious">Religious Site</string>
+    <string name="map_category_viewpoint">Viewpoint</string>
+    <string name="map_category_park">Park &amp; Garden</string>
+    <string name="map_category_food">Local Food</string>
+    <string name="map_category_market">Market</string>
+    <string name="map_category_tourist">Tourist Attraction</string>
+
+    <!-- Contact Us -->
+    <string name="contact_us_title">Contact Support</string>
+    <string name="contact_topic">Select a Topic</string>
+    <string name="contact_topic_billing">Billing</string>
+    <string name="contact_topic_analysis">Analysis</string>
+    <string name="contact_topic_bug">Bug Report</string>
+    <string name="contact_topic_general">General</string>
+    <string name="contact_message_hint">Describe your issue or question...</string>
+    <string name="contact_attach">Attach Screenshot</string>
+    <string name="contact_send">Send Message</string>
+    <string name="contact_success">Message sent successfully!</string>
+    <string name="contact_error_topic">Please select a topic</string>
+    <string name="contact_error_message">Please enter a message</string>
+
+    <!-- Offline/Online -->
+    <string name="no_internet_title">No Internet Connection</string>
+    <string name="no_internet_message">Your photo has been saved and will be analyzed when you\'re back online.</string>
+    <string name="photo_saved_offline">Photo Saved Offline</string>
+    <string name="go_to_saved">Go to Saved</string>
+    <string name="saved_offline">Saved Offline</string>
+    <string name="back_online_title">You\'re Back Online!</string>
+    <string name="back_online_message">You have %1$d %2$s ready to analyze</string>
+    <string name="back_online_photo_singular">photo</string>
+    <string name="back_online_photo_plural">photos</string>
+    <string name="analyze_now">Analyze Now</string>
+    <string name="later">Later</string>
+    <string name="analyzing_pending">Analyzing pending photos\u2026</string>
+    <string name="photos_analyzed_success">photo(s) analyzed successfully!</string>
+    <string name="analyzed_some_failed">analyzed, %1$d failed — will retry later</string>
+
+    <!-- Onboarding Animation -->
+    <string name="scanning">Scanning</string>
+    <string name="eiffel_tower_paris">Eiffel Tower, Paris</string>
 </resources>

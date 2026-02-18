@@ -123,9 +123,71 @@ tr:hover td{background:#fafafa}
 .expand-content{font-size:13px}
 .expand-content table{margin-top:8px;width:auto}
 .expand-content td,.expand-content th{padding:6px 10px}
-/* Responsive */
-@media(max-width:900px){
-.sidebar{width:60px}.sidebar-brand span,.sidebar-nav a span{display:none}.sidebar-brand h2{font-size:14px;text-align:center}.sidebar-nav a{justify-content:center;padding:14px 0}.sidebar-nav a .icon{margin:0}.sidebar-footer button{font-size:0;padding:10px}.main{margin-left:60px}.stats-grid{grid-template-columns:repeat(2,1fr)}.charts-grid{grid-template-columns:1fr}
+/* Hamburger button */
+.hamburger{display:none;position:fixed;top:12px;left:12px;z-index:150;background:var(--sidebar);color:var(--gold);border:none;border-radius:8px;width:40px;height:40px;font-size:22px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
+.sidebar-overlay.open{display:block}
+/* Responsive — Tablet (<=1024px) */
+@media(max-width:1024px){
+.stats-grid{grid-template-columns:repeat(2,1fr)}
+.charts-grid{grid-template-columns:1fr}
+.monitor-grid{grid-template-columns:repeat(2,1fr)}
+}
+/* Responsive — Small tablet / large phone (<=768px) */
+@media(max-width:768px){
+.hamburger{display:flex}
+.sidebar{transform:translateX(-100%);transition:transform .3s ease;z-index:110}
+.sidebar.open{transform:translateX(0)}
+.main{margin-left:0;padding:16px;padding-top:60px}
+.main-header h1{font-size:20px}
+.stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+.stat-card{padding:14px}
+.stat-card .value{font-size:22px}
+.charts-grid{grid-template-columns:1fr;gap:14px}
+.monitor-grid{grid-template-columns:1fr;gap:12px}
+.filters{flex-direction:column;align-items:stretch}
+.filters input,.filters select{width:100%!important}
+.table-card{padding:12px}
+table{font-size:12px}
+th,td{padding:8px 6px}
+.btn-sm{padding:3px 6px;font-size:10px}
+.pagination{flex-direction:column;gap:8px;align-items:center}
+.log-entry{flex-wrap:wrap;gap:6px;font-size:11px}
+.log-entry .ts{width:100%}
+.log-entry .url{width:100%;min-width:0}
+.modal{width:95%;padding:20px;max-height:90vh;border-radius:12px}
+.modal h2{font-size:18px}
+.modal .detail-row{flex-direction:column;gap:2px}
+.modal .detail-row .dlabel{min-width:unset;font-weight:600}
+.msg-card img{max-width:100%}
+.login-box{width:90%;padding:32px 24px}
+}
+/* Responsive — Phone (<=480px) */
+@media(max-width:480px){
+.stats-grid{grid-template-columns:1fr;gap:8px}
+.stat-card{padding:12px;display:flex;align-items:center;gap:12px}
+.stat-card .label{font-size:11px;margin-bottom:0}
+.stat-card .value{font-size:20px;margin-top:0}
+.stat-card .sub{display:none}
+.stat-card .label{order:1;flex:1}
+.stat-card .value{order:2}
+.main{padding:10px;padding-top:56px}
+.main-header{margin-bottom:14px}
+.main-header h1{font-size:18px}
+.chart-card{padding:12px}
+.chart-card h3{font-size:13px}
+table{font-size:11px}
+th,td{padding:6px 4px}
+.log-entry{font-size:10px;padding:8px 10px}
+.modal{padding:16px;border-radius:10px}
+.login-box{padding:24px 20px}
+.login-box h1{font-size:22px}
+.login-box input{padding:12px}
+.login-box button{padding:12px}
+}
+/* Table responsive: hide less important columns on small screens */
+@media(max-width:768px){
+.hide-mobile{display:none}
 }
 .hidden{display:none!important}
 .loading{text-align:center;padding:40px;color:var(--text-light)}
@@ -143,6 +205,10 @@ tr:hover td{background:#fafafa}
     <div class="login-error" id="loginError">Invalid password. Please try again.</div>
   </div>
 </div>
+
+<!-- Hamburger button (mobile) -->
+<button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">&#9776;</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
@@ -199,7 +265,7 @@ tr:hover td{background:#fafafa}
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Name</th><th>Email</th><th>Type</th><th>Device ID</th><th>Lang</th><th>Landmarks</th><th>Registered</th><th>Last Login</th><th></th>
+            <th>ID</th><th>Name</th><th class="hide-mobile">Email</th><th>Type</th><th class="hide-mobile">Device ID</th><th class="hide-mobile">Lang</th><th>Landmarks</th><th class="hide-mobile">Registered</th><th class="hide-mobile">Last Login</th><th></th>
           </tr>
         </thead>
         <tbody id="usersTable"></tbody>
@@ -233,7 +299,7 @@ tr:hover td{background:#fafafa}
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Image</th><th>Name</th><th>Location</th><th>User</th><th>Lang</th><th>Rating</th><th>Saved</th><th>Date</th><th></th>
+            <th>ID</th><th>Image</th><th>Name</th><th class="hide-mobile">Size</th><th class="hide-mobile">Location</th><th class="hide-mobile">User</th><th class="hide-mobile">Lang</th><th class="hide-mobile">Rating</th><th class="hide-mobile">Saved</th><th class="hide-mobile">Tokens</th><th class="hide-mobile">Date</th><th></th>
           </tr>
         </thead>
         <tbody id="landmarksTable"></tbody>
@@ -373,6 +439,12 @@ async function apiFetch(path) {
   return r.json();
 }
 
+// ── Sidebar toggle (mobile) ───────────────────────────────────
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("sidebarOverlay").classList.toggle("open");
+}
+
 // ── Tabs ──────────────────────────────────────────────────────
 document.querySelectorAll(".sidebar-nav a").forEach((a) => {
   a.addEventListener("click", (e) => {
@@ -382,6 +454,9 @@ document.querySelectorAll(".sidebar-nav a").forEach((a) => {
     a.classList.add("active");
     document.querySelectorAll(".tab-content").forEach((x) => x.classList.remove("active"));
     document.getElementById("tab-" + tab).classList.add("active");
+    // Close sidebar on mobile after selecting tab
+    document.getElementById("sidebar").classList.remove("open");
+    document.getElementById("sidebarOverlay").classList.remove("open");
     loadTab(tab);
   });
 });
@@ -487,13 +562,13 @@ async function loadUsers(page) {
       <tr>
         <td>${u.id}</td>
         <td>${esc(u.display_name)}</td>
-        <td>${esc(u.email) || "-"}</td>
+        <td class="hide-mobile">${esc(u.email) || "-"}</td>
         <td><span class="badge badge-${u.auth_type}">${u.auth_type}</span></td>
-        <td title="${esc(u.device_id)}">${u.device_id ? esc(u.device_id).substring(0,16)+"..." : "-"}</td>
-        <td>${u.language || "en"}</td>
+        <td class="hide-mobile" title="${esc(u.device_id)}">${u.device_id ? esc(u.device_id).substring(0,16)+"..." : "-"}</td>
+        <td class="hide-mobile">${u.language || "en"}</td>
         <td>${u.landmarks_count}</td>
-        <td>${fmtDate(u.created_at)}</td>
-        <td>${fmtDate(u.last_login_at)}</td>
+        <td class="hide-mobile">${fmtDate(u.created_at)}</td>
+        <td class="hide-mobile">${fmtDate(u.last_login_at)}</td>
         <td>
           <button class="btn btn-primary btn-sm" onclick="viewUserLandmarks(${u.id},'${esc(u.display_name)}')">View</button>
           <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Delete</button>
@@ -553,12 +628,14 @@ async function loadLandmarks(page) {
         <td>${l.id}</td>
         <td>${l.image_filename ? `<img src="${API}/api/uploads/${l.image_filename}" style="width:40px;height:40px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : "-"}</td>
         <td>${esc(l.name)}</td>
-        <td>${esc(l.location)}</td>
-        <td>${esc(l.user_name) || "ID:"+l.user_id}</td>
-        <td>${l.language||"en"}</td>
-        <td>${stars(l.rating||0)}</td>
-        <td>${l.is_saved ? '<span class="badge badge-info">Saved</span>' : "-"}</td>
-        <td>${fmtDate(l.created_at)}</td>
+        <td class="hide-mobile">${l.image_size ? fmtBytes(l.image_size) : "-"}</td>
+        <td class="hide-mobile">${esc(l.location)}</td>
+        <td class="hide-mobile">${esc(l.user_name) || "ID:"+l.user_id}</td>
+        <td class="hide-mobile">${l.language||"en"}</td>
+        <td class="hide-mobile">${stars(l.rating||0)}</td>
+        <td class="hide-mobile">${l.is_saved ? '<span class="badge badge-info">Saved</span>' : "-"}</td>
+        <td class="hide-mobile">${l.tokens_total || 0}</td>
+        <td class="hide-mobile">${fmtDate(l.created_at)}</td>
         <td>
           <button class="btn btn-primary btn-sm" onclick="viewLandmark(${l.id})">View</button>
           <button class="btn btn-danger btn-sm" onclick="deleteLandmark(${l.id})">Delete</button>
@@ -583,6 +660,7 @@ async function viewLandmark(id) {
     if (l.image_filename) html += `<img src="${API}/api/uploads/${l.image_filename}" onerror="this.style.display='none'">`;
     html += `
       <div class="detail-row"><span class="dlabel">ID</span><span>${l.id}</span></div>
+      <div class="detail-row"><span class="dlabel">Image Size</span><span>${l.image_size ? fmtBytes(l.image_size) : "-"}</span></div>
       <div class="detail-row"><span class="dlabel">Location</span><span>${esc(l.location)}</span></div>
       <div class="detail-row"><span class="dlabel">Year Built</span><span>${esc(l.year_built)}</span></div>
       <div class="detail-row"><span class="dlabel">Status</span><span>${esc(l.status)}</span></div>
@@ -593,6 +671,7 @@ async function viewLandmark(id) {
       <div class="detail-row"><span class="dlabel">Rating</span><span>${stars(l.rating||0)}</span></div>
       <div class="detail-row"><span class="dlabel">Saved</span><span>${l.is_saved?"Yes":"No"}</span></div>
       <div class="detail-row"><span class="dlabel">Coordinates</span><span>${l.latitude||"-"}, ${l.longitude||"-"}</span></div>
+      <div class="detail-row"><span class="dlabel">Tokens</span><span>In: ${l.tokens_input||0} &nbsp;|&nbsp; Out: ${l.tokens_output||0} &nbsp;|&nbsp; Total: ${l.tokens_total||0}</span></div>
       <div class="detail-row"><span class="dlabel">Created</span><span>${fmtDateTime(l.created_at)}</span></div>
       <h3 style="margin:16px 0 8px">Narrative</h3>
       <p style="font-size:14px;line-height:1.6;margin-bottom:8px">${esc(l.narrative_p1)}</p>

@@ -60,7 +60,7 @@
                     android:text="@string/structural_apex"
                     android:textColor="@color/white"
                     android:textSize="10sp"
-                    android:fontFamily="@font/plus_jakarta_sans_medium" />
+                    android:fontFamily="@font/inter_medium" />
             </LinearLayout>
 
             <LinearLayout
@@ -86,7 +86,7 @@
                     android:text="@string/lattice_pattern"
                     android:textColor="@color/white"
                     android:textSize="10sp"
-                    android:fontFamily="@font/plus_jakarta_sans_medium" />
+                    android:fontFamily="@font/inter_medium" />
             </LinearLayout>
 
             <LinearLayout
@@ -113,7 +113,7 @@
                     android:text="@string/historical_match"
                     android:textColor="@color/white"
                     android:textSize="10sp"
-                    android:fontFamily="@font/plus_jakarta_sans_medium" />
+                    android:fontFamily="@font/inter_medium" />
             </LinearLayout>
 
             <LinearLayout
@@ -140,7 +140,7 @@
                     android:text="@string/base_geo"
                     android:textColor="@color/white"
                     android:textSize="10sp"
-                    android:fontFamily="@font/plus_jakarta_sans_medium" />
+                    android:fontFamily="@font/inter_medium" />
             </LinearLayout>
 
         </FrameLayout>
@@ -188,7 +188,7 @@
                     android:text="0%"
                     android:textColor="@color/deep_blue"
                     android:textSize="16sp"
-                    android:fontFamily="@font/plus_jakarta_sans_bold" />
+                    android:fontFamily="@font/inter_bold" />
 
             </FrameLayout>
 
@@ -201,7 +201,7 @@
             android:text="@string/identifying_landmark"
             android:textColor="@color/deep_blue"
             android:textSize="24sp"
-            android:fontFamily="@font/plus_jakarta_sans_bold" />
+            android:fontFamily="@font/inter_bold" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -224,7 +224,7 @@
                 android:text="@string/analyzing_status"
                 android:textColor="@color/deep_blue_50"
                 android:textSize="14sp"
-                android:fontFamily="@font/plus_jakarta_sans_medium" />
+                android:fontFamily="@font/inter_medium" />
 
         </LinearLayout>
 
@@ -236,7 +236,7 @@
             android:text="@string/cancel"
             android:textColor="@color/deep_blue_50"
             android:textSize="14sp"
-            android:fontFamily="@font/plus_jakarta_sans_semibold"
+            android:fontFamily="@font/inter_semibold"
             android:textAllCaps="true"
             android:padding="16dp" />
 

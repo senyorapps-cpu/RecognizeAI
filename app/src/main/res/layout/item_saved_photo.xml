@@ -18,38 +18,60 @@
             android:scaleType="centerCrop"
             android:contentDescription="Saved photo" />
 
-        <!-- Heart icon top-right -->
+        <!-- Delete button top-right -->
         <ImageView
-            android:id="@+id/btnHeart"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/btnDeleteItem"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:layout_gravity="top|end"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:padding="4dp"
-            android:src="@drawable/ic_favorite_filled"
-            android:contentDescription="Favorite" />
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            android:padding="7dp"
+            android:background="@drawable/bg_delete_badge"
+            android:src="@drawable/ic_delete_white"
+            android:scaleType="centerInside"
+            android:contentDescription="Delete item" />
 
-        <!-- Pending overlay (dark semi-transparent) -->
+        <!-- Pending overlay (deep blue semi-transparent) -->
         <View
             android:id="@+id/pendingOverlay"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#99000000"
+            android:background="@drawable/bg_offline_overlay"
             android:visibility="gone" />
 
-        <!-- Pending badge -->
-        <TextView
-            android:id="@+id/tvPendingBadge"
+        <!-- Pending badge with wifi icon -->
+        <LinearLayout
+            android:id="@+id/pendingBadgeContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:background="@drawable/bg_pending_badge"
-            android:text="@string/pending_analysis"
-            android:textColor="@color/white"
-            android:textSize="11sp"
-            android:fontFamily="@font/plus_jakarta_sans_semibold"
-            android:visibility="gone" />
+            android:background="@drawable/bg_offline_badge"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_wifi_off"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/tvPendingBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/inter_bold"
+                android:text="@string/saved_offline"
+                android:textColor="@color/deep_blue"
+                android:textSize="11sp" />
+
+        </LinearLayout>
 
         <!-- Bottom gradient overlay -->
         <View
@@ -72,7 +94,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/white"
                 android:textSize="14sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:maxLines="2"
                 android:ellipsize="end" />
 
@@ -83,7 +105,7 @@
                 android:layout_marginTop="2dp"
                 android:textColor="#B3FFFFFF"
                 android:textSize="11sp"
-                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:fontFamily="@font/inter_medium"
                 android:maxLines="1" />
 
         </LinearLayout>

@@ -132,6 +132,11 @@ async function initDb() {
     // Add language column to landmarks table
     await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en'`);
 
+    // Add token usage columns to landmarks table
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS tokens_input INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS tokens_output INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS tokens_total INTEGER DEFAULT 0`);
+
     // Create privacy_policies table
     await client.query(`
       CREATE TABLE IF NOT EXISTS privacy_policies (
@@ -643,10 +648,7 @@ app.post("/api/analyze", upload.single("image"), async (req, res) => {
     console.log(`[Analyze] Language requested: ${language} (${langName})`);
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
+      model: "gemini-2.0-flash",
     });
 
     const prompt = `Analyze this image and identify the landmark, building, or place of interest shown.
@@ -671,17 +673,62 @@ Respond ONLY with a JSON object in this exact format, no markdown, no code fence
 }
 If you cannot identify a specific landmark, make your best guess based on the architectural style and features visible. Remember: ALL values must be in ${langName}.`;
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Image,
+    // Single retry with short wait for rate limits
+    let result;
+    try {
+      result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Image,
+          },
         },
-      },
-    ]);
+      ]);
+    } catch (apiError) {
+      if (apiError.status === 429) {
+        // Check if daily quota is exhausted (limit: 0 means no retrying will help)
+        const isDailyExhausted = apiError.message && apiError.message.includes("limit: 0");
+        if (isDailyExhausted) {
+          console.error("[Analyze] Daily API quota exhausted (limit: 0)");
+          return res.status(429).json({
+            error: "API quota exhausted",
+            message: "Daily API limit reached. Please try again tomorrow.",
+            retryable: false
+          });
+        }
+        // Per-minute rate limit — wait 15s and retry once
+        console.log("[Analyze] Rate limited (429), retrying once after 15s...");
+        await new Promise(resolve => setTimeout(resolve, 15000));
+        try {
+          result = await model.generateContent([
+            prompt,
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Image,
+              },
+            },
+          ]);
+        } catch (retryError) {
+          console.error("[Analyze] Retry also failed:", retryError.status, retryError.message?.substring(0, 200));
+          return res.status(429).json({
+            error: "API rate limited",
+            message: "Server is busy. Please try again in a minute.",
+            retryable: true
+          });
+        }
+      } else {
+        throw apiError;
+      }
+    }
 
     const responseText = result.response.text();
+    const usage = result.response.usageMetadata;
+    const tokensInput = usage?.promptTokenCount || 0;
+    const tokensOutput = usage?.candidatesTokenCount || 0;
+    const tokensTotal = usage?.totalTokenCount || 0;
+    console.log(`[Analyze] Tokens — input: ${tokensInput}, output: ${tokensOutput}, total: ${tokensTotal}`);
     console.log("Gemini raw response:", responseText);
 
     // Clean markdown fences if present
@@ -732,8 +779,9 @@ If you cannot identify a specific landmark, make your best guess based on the ar
         user_id, device_id, name, location, year_built, status, architect, capacity,
         narrative_p1, narrative_quote, narrative_p2,
         nearby1_name, nearby1_category, nearby2_name, nearby2_category,
-        nearby3_name, nearby3_category, image_filename, latitude, longitude, language
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id`,
+        nearby3_name, nearby3_category, image_filename, latitude, longitude, language,
+        tokens_input, tokens_output, tokens_total
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id`,
       [
         userId,
         deviceId,
@@ -756,6 +804,9 @@ If you cannot identify a specific landmark, make your best guess based on the ar
         latitude,
         longitude,
         language,
+        tokensInput,
+        tokensOutput,
+        tokensTotal,
       ]
     );
 
@@ -821,7 +872,7 @@ app.get("/api/user/:id/landmarks", async (req, res) => {
 
     if (deviceId) {
       // Match landmarks by user_id OR device_id (covers guest + google on same device)
-      sql = "SELECT DISTINCT ON (id) * FROM landmarks WHERE user_id = $1 OR device_id = $2";
+      sql = "SELECT DISTINCT ON (id) * FROM landmarks WHERE (user_id = $1 OR device_id = $2)";
       params = [req.params.id, deviceId];
     } else {
       sql = "SELECT * FROM landmarks WHERE user_id = $1";
@@ -854,10 +905,11 @@ app.get("/api/landmarks/by-device", async (req, res) => {
       return res.status(400).json({ error: "device_id is required" });
     }
 
-    const result = await pool.query(
-      "SELECT * FROM landmarks WHERE device_id = $1 ORDER BY id DESC",
-      [deviceId]
-    );
+    const savedOnly = req.query.saved === "true";
+    let sql = "SELECT * FROM landmarks WHERE device_id = $1";
+    if (savedOnly) sql += " AND is_saved = 1";
+    sql += " ORDER BY id DESC";
+    const result = await pool.query(sql, [deviceId]);
     console.log(`[LandmarksByDevice] Returned ${result.rows.length} rows`);
     const rows = result.rows.map((row) => {
       row.image_url = `/api/uploads/${row.image_filename}`;
@@ -1139,6 +1191,144 @@ app.post("/api/contact", upload.single("screenshot"), async (req, res) => {
   }
 });
 
+// ── Share page (OG meta for social previews) ───────────────────
+
+app.get("/share/:id", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name, location, rating, image_filename, narrative_p1, narrative_quote, narrative_p2, year_built, status, architect, capacity, nearby1_name, nearby1_category, nearby2_name, nearby2_category, nearby3_name, nearby3_category FROM landmarks WHERE id = $1",
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).send("Landmark not found");
+    }
+
+    const lm = result.rows[0];
+    const name = escapeHtml(lm.name || "Discovery");
+    const location = escapeHtml(lm.location || "");
+    const p1 = escapeHtml(lm.narrative_p1 || "");
+    const quote = escapeHtml(lm.narrative_quote || "");
+    const p2 = escapeHtml(lm.narrative_p2 || "");
+    const yearBuilt = escapeHtml(lm.year_built || "");
+    const status = escapeHtml(lm.status || "");
+    const architect = escapeHtml(lm.architect || "");
+    const capacity = escapeHtml(lm.capacity || "");
+    const nearby = [
+      { name: escapeHtml(lm.nearby1_name || ""), cat: escapeHtml(lm.nearby1_category || "") },
+      { name: escapeHtml(lm.nearby2_name || ""), cat: escapeHtml(lm.nearby2_category || "") },
+      { name: escapeHtml(lm.nearby3_name || ""), cat: escapeHtml(lm.nearby3_category || "") },
+    ].filter(n => n.name);
+    const rating = Math.max(0, Math.min(5, parseInt(lm.rating) || 0));
+    const imageUrl = lm.image_filename
+      ? `http://mnaks.online:3001/api/uploads/${lm.image_filename}`
+      : "";
+    const shareUrl = `http://mnaks.online:3001/share/${lm.id}`;
+    const description = quote || location || "Discovered with TravelAI";
+
+    // Star HTML
+    const starsHtml = Array.from({ length: 5 }, (_, i) =>
+      i < rating
+        ? '<svg class="star" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'
+        : '<svg class="star empty" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'
+    ).join("");
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${name} — TravelAI</title>
+<meta property="og:title" content="${name}">
+<meta property="og:description" content="${description}">
+<meta property="og:image" content="${imageUrl}">
+<meta property="og:url" content="${shareUrl}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TravelAI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${name}">
+<meta name="twitter:description" content="${description}">
+<meta name="twitter:image" content="${imageUrl}">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;font-family:'Plus Jakarta Sans',sans-serif;background:#f3f4f6;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{max-width:375px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);display:flex;flex-direction:column}
+.top{position:relative;width:100%;aspect-ratio:9/12;overflow:hidden}
+.top img{width:100%;height:100%;object-fit:cover;display:block}
+.badge{position:absolute;top:20px;left:20px;background:rgba(255,255,255,0.9);backdrop-filter:blur(12px);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.2);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.badge-dot{width:8px;height:8px;background:#25aff4;border-radius:50%;animation:pulse 2s infinite}
+.badge-text{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1e293b}
+.logo{position:absolute;top:20px;right:20px;background:#25aff4;padding:8px;border-radius:12px;box-shadow:0 4px 12px rgba(37,175,244,0.3)}
+.logo svg{display:block}
+.bottom{padding:20px 24px;display:flex;flex-direction:column;gap:8px}
+h1{font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;line-height:1.2}
+.stars-row{display:flex;align-items:center;gap:2px}
+.star{width:16px;height:16px;fill:#facc15}
+.star.empty{fill:#e2e8f0}
+.rating-num{font-size:12px;font-weight:600;color:#94a3b8;margin-left:4px}
+.location{color:#64748b;font-size:13px;font-weight:500;display:flex;align-items:center;gap:4px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:4px}
+.info-item .label{font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em}
+.info-item .value{font-size:13px;font-weight:600;color:#0f172a;margin-top:1px}
+.divider{border-top:1px solid #f1f5f9;margin:8px 0}
+.narrative{color:#004d4d;font-size:13px;font-weight:400;line-height:1.6}
+.quote-block{border-left:3px solid #DFC623;padding-left:10px;margin:6px 0}
+.quote-text{color:#92700A;font-size:12px;font-style:italic;font-weight:500;line-height:1.5}
+.nearby-label{font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-top:6px}
+.nearby-list{margin-top:4px;display:flex;flex-direction:column;gap:2px}
+.nearby-item{font-size:12px;color:#0f172a;font-weight:500}
+.nearby-item span{color:#94a3b8;font-weight:400;font-size:11px;margin-left:4px}
+.footer{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-top:1px solid #f1f5f9}
+.footer-brand{display:flex;align-items:center;gap:8px}
+.footer-label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em}
+.footer-icon{width:24px;height:24px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center}
+.footer-icon svg{width:12px;height:12px}
+.no-img{width:100%;aspect-ratio:9/12;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:48px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    ${imageUrl ? `<img src="${imageUrl}" alt="${name}">` : '<div class="no-img">&#127963;</div>'}
+    <div class="badge"><div class="badge-dot"></div><span class="badge-text">AI Discovery</span></div>
+    <div class="logo"><svg width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
+  </div>
+  <div class="bottom">
+    <h1>${name}</h1>
+    ${location ? `<div class="location">&#128205; ${location}</div>` : ""}
+    ${rating > 0 ? `<div class="stars-row">${starsHtml}<span class="rating-num">${rating}.0</span></div>` : ""}
+    ${(yearBuilt || status || architect || capacity) ? `<div class="info-grid">${yearBuilt ? `<div class="info-item"><div class="label">Year Built</div><div class="value">${yearBuilt}</div></div>` : ""}${status ? `<div class="info-item"><div class="label">Status</div><div class="value">${status}</div></div>` : ""}${architect ? `<div class="info-item"><div class="label">Architect</div><div class="value">${architect}</div></div>` : ""}${capacity ? `<div class="info-item"><div class="label">Capacity</div><div class="value">${capacity}</div></div>` : ""}</div>` : ""}
+    <div class="divider"></div>
+    ${p1 ? `<p class="narrative">${p1}</p>` : ""}
+    ${quote ? `<div class="quote-block"><div class="quote-text">&ldquo;${quote}&rdquo;</div></div>` : ""}
+    ${p2 ? `<p class="narrative">${p2}</p>` : ""}
+    ${nearby.length ? `<div class="nearby-label">Nearby</div><div class="nearby-list">${nearby.map(n => `<div class="nearby-item">&#9656; ${n.name}${n.cat ? ` <span>${n.cat}</span>` : ""}</div>`).join("")}</div>` : ""}
+  </div>
+  <div class="footer">
+    <div></div>
+    <div class="footer-brand">
+      <span class="footer-label">TravelAI App</span>
+      <div class="footer-icon"><svg fill="none" stroke="#25aff4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`);
+  } catch (error) {
+    console.error("Share page error:", error);
+    res.status(500).send("Something went wrong");
+  }
+});
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 // ── Admin Dashboard ─────────────────────────────────────────────
 
 // Serve admin HTML page
@@ -1384,7 +1574,26 @@ app.get("/api/admin/landmarks", adminAuth, async (req, res) => {
       params
     );
 
-    res.json({ landmarks: result.rows, total, page: parseInt(page), limit: parseInt(limit) });
+    // Attach image file size for each landmark
+    const landmarks = result.rows.map((row) => {
+      if (row.image_filename) {
+        try {
+          const imgPath = path.join(uploadDir, row.image_filename);
+          if (fs.existsSync(imgPath)) {
+            row.image_size = fs.statSync(imgPath).size;
+          } else {
+            row.image_size = null;
+          }
+        } catch (e) {
+          row.image_size = null;
+        }
+      } else {
+        row.image_size = null;
+      }
+      return row;
+    });
+
+    res.json({ landmarks, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1400,7 +1609,16 @@ app.get("/api/admin/landmarks/:id", adminAuth, async (req, res) => {
       [req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
-    res.json(result.rows[0]);
+    const landmark = result.rows[0];
+    if (landmark.image_filename) {
+      try {
+        const imgPath = path.join(uploadDir, landmark.image_filename);
+        if (fs.existsSync(imgPath)) {
+          landmark.image_size = fs.statSync(imgPath).size;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    res.json(landmark);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

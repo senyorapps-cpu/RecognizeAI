@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode background colors -->
+    <color name="dark_background">#FF121212</color>
+    <color name="dark_surface">#FF1E1E1E</color>
+    <color name="dark_card">#FF2A2A2A</color>
+
+    <!-- Override colors used as backgrounds in layouts -->
+    <color name="white">#FF1E1E1E</color>
+    <color name="black">#FFFFFFFF</color>
+
+    <!-- Text colors — invert for readability -->
+    <color name="deep_blue">#FFB8D4F0</color>
+    <color name="deep_blue_70">#B3B8D4F0</color>
+    <color name="deep_blue_50">#80B8D4F0</color>
+    <color name="deep_blue_20">#33B8D4F0</color>
+    <color name="deep_blue_10">#1AB8D4F0</color>
+    <color name="deep_blue_5">#0DB8D4F0</color>
+
+    <!-- Keep gold accent the same -->
+    <color name="gold_accent">#FFDFC623</color>
+    <color name="gold_accent_40">#66DFC623</color>
+    <color name="gold_accent_20">#33DFC623</color>
+
+    <!-- Neutrals -->
+    <color name="light_sky">#FF1A2332</color>
+    <color name="slate_100">#FF2A2A2A</color>
+    <color name="slate_200">#FF333333</color>
+    <color name="slate_900">#FFE2E8F0</color>
+</resources>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Place image -->
+    <ImageView
+        android:id="@+id/imgPlaceDetail"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:scaleType="centerCrop"
+        android:background="@drawable/bg_top_place_card"
+        android:contentDescription="Place" />
+
+    <!-- Name -->
+    <TextView
+        android:id="@+id/tvPlaceName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/inter_bold"
+        android:textColor="@color/deep_blue"
+        android:textSize="20sp" />
+
+    <!-- Location + Rating row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:src="@drawable/ic_location_on"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/tvPlaceLocation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:fontFamily="@font/inter_medium"
+            android:textColor="@color/deep_blue_50"
+            android:textSize="13sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tvPlaceRating"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/inter_bold"
+            android:textColor="@color/gold_accent"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!-- Category chip -->
+    <TextView
+        android:id="@+id/tvPlaceCategory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_map_chip"
+        android:fontFamily="@font/inter_medium"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="4dp"
+        android:textColor="@color/deep_blue"
+        android:textSize="11sp" />
+
+    <!-- Description -->
+    <TextView
+        android:id="@+id/tvPlaceDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="@font/inter"
+        android:lineSpacingMultiplier="1.4"
+        android:textColor="@color/deep_blue_50"
+        android:textSize="13sp" />
+
+    <!-- Navigate button -->
+    <TextView
+        android:id="@+id/btnNavigatePlace"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_contact_button"
+        android:fontFamily="@font/inter_bold"
+        android:gravity="center"
+        android:text="@string/map_navigate"
+        android:textColor="@color/white"
+        android:textSize="14sp" />
+
+</LinearLayout>

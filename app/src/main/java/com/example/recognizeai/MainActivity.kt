@@ -11,12 +11,18 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.example.recognizeai.databinding.ActivityMainBinding
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +33,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var photoUri: Uri? = null
     private var currentTab = -1
+
+    private var homeFragment: Fragment? = null
+    private var mapFragment: Fragment? = null
+    private var savedFragment: Fragment? = null
+    private var profileFragment: Fragment? = null
+    private var activeFragment: Fragment? = null
 
     companion object {
         const val TAB_HOME = 0
@@ -54,15 +66,35 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LocaleHelper.initFromSession(this)
+        // Apply dark mode preference (only if not already matching to avoid recreation loop)
+        val session = SessionManager(this)
+        val targetMode = if (session.isDarkMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
+        if (AppCompatDelegate.getDefaultNightMode() != targetMode) {
+            AppCompatDelegate.setDefaultNightMode(targetMode)
+        }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setupNavigation()
 
-        val targetTab = intent.getIntExtra(EXTRA_TAB, TAB_HOME)
-        if (savedInstanceState == null) {
+        if (savedInstanceState != null) {
+            // Activity was recreated (e.g. language change) — remove stale fragments
+            supportFragmentManager.fragments.forEach {
+                supportFragmentManager.beginTransaction().remove(it).commitNowAllowingStateLoss()
+            }
+            // Restore the tab we were on before recreation
+            val restoredTab = savedInstanceState.getInt("current_tab", TAB_HOME)
+            switchTab(restoredTab)
+        } else {
+            val targetTab = intent.getIntExtra(EXTRA_TAB, TAB_HOME)
             switchTab(targetTab)
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt("current_tab", currentTab)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -70,7 +102,18 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         val targetTab = intent.getIntExtra(EXTRA_TAB, -1)
         if (targetTab >= 0) {
-            switchTab(targetTab)
+            val wasAlreadyOnTab = targetTab == currentTab
+            if (!wasAlreadyOnTab) {
+                switchTab(targetTab)
+            }
+            // Only refresh if fragment is already attached;
+            // new fragments load data in their own onViewCreated()
+            if (targetTab == TAB_SAVED) {
+                val saved = savedFragment as? SavedPhotosFragment
+                if (saved != null && saved.isAdded) {
+                    saved.refreshData()
+                }
+            }
         }
     }
 
@@ -111,37 +154,58 @@ class MainActivity : AppCompatActivity() {
         if (pendingManager.hasPendingItems() && NetworkUtils.isOnline(this) && !syncDialogShowing) {
             val count = pendingManager.getPendingCount()
             syncDialogShowing = true
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Unanalyzed Photos")
-                .setMessage("You have $count unanalyzed photo(s). Analyze now?")
-                .setPositiveButton("Analyze Now") { _, _ ->
-                    syncDialogShowing = false
-                    Toast.makeText(this, "Analyzing pending photos\u2026", Toast.LENGTH_SHORT).show()
-                    CoroutineScope(Dispatchers.Main).launch {
-                        pendingManager.syncAll(
-                            onComplete = { success, fail ->
-                                val msg = if (fail == 0) {
-                                    "$success photo(s) analyzed successfully!"
-                                } else {
-                                    "$success analyzed, $fail failed — will retry later"
-                                }
-                                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-                                // Refresh the current fragment if it's the Saved tab
-                                if (currentTab == TAB_SAVED) {
-                                    switchTab(-1) // reset to force refresh
-                                    switchTab(TAB_SAVED)
-                                }
+
+            val dialog = Dialog(this)
+            dialog.setContentView(R.layout.dialog_back_online)
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            dialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+
+            val photoWord = if (count == 1) getString(R.string.back_online_photo_singular) else getString(R.string.back_online_photo_plural)
+            dialog.findViewById<TextView>(R.id.tvSyncMessage).text =
+                getString(R.string.back_online_message, count, photoWord)
+
+            dialog.findViewById<TextView>(R.id.btnAnalyzeNow).setOnClickListener {
+                dialog.dismiss()
+                syncDialogShowing = false
+                val snackbar = Snackbar.make(binding.root, getString(R.string.analyzing_pending), Snackbar.LENGTH_INDEFINITE)
+                snackbar.setBackgroundTint(getColor(R.color.deep_blue))
+                snackbar.setTextColor(getColor(R.color.white))
+                snackbar.view.translationY = -(90 * resources.displayMetrics.density)
+                snackbar.show()
+                CoroutineScope(Dispatchers.Main).launch {
+                    pendingManager.syncAll(
+                        onComplete = { success, fail ->
+                            snackbar.dismiss()
+                            val msg = if (fail == 0) {
+                                "$success ${getString(R.string.photos_analyzed_success)}"
+                            } else {
+                                "$success ${getString(R.string.analyzed_some_failed, fail)}"
                             }
-                        )
-                    }
+                            Snackbar.make(binding.root, msg, Snackbar.LENGTH_LONG).apply {
+                                setBackgroundTint(getColor(R.color.deep_blue))
+                                setTextColor(getColor(R.color.white))
+                                view.translationY = -(90 * resources.displayMetrics.density)
+                                show()
+                            }
+                            (savedFragment as? SavedPhotosFragment)?.refreshData()
+                        }
+                    )
                 }
-                .setNegativeButton("Later") { _, _ ->
-                    syncDialogShowing = false
-                }
-                .setOnCancelListener {
-                    syncDialogShowing = false
-                }
-                .show()
+            }
+
+            dialog.findViewById<TextView>(R.id.btnLater).setOnClickListener {
+                dialog.dismiss()
+                syncDialogShowing = false
+            }
+
+            dialog.setOnCancelListener {
+                syncDialogShowing = false
+            }
+
+            dialog.show()
         }
     }
 
@@ -157,16 +221,21 @@ class MainActivity : AppCompatActivity() {
         if (tab == currentTab) return
         currentTab = tab
 
-        val fragment: Fragment = when (tab) {
-            TAB_MAP -> MapFragment()
-            TAB_SAVED -> SavedPhotosFragment()
-            TAB_PROFILE -> ProfileFragment()
-            else -> HomeFragment()
+        val fm = supportFragmentManager
+        val transaction = fm.beginTransaction()
+
+        activeFragment?.let { transaction.hide(it) }
+
+        val target = when (tab) {
+            TAB_MAP -> mapFragment ?: MapFragment().also { mapFragment = it; transaction.add(R.id.fragmentContainer, it) }
+            TAB_SAVED -> savedFragment ?: SavedPhotosFragment().also { savedFragment = it; transaction.add(R.id.fragmentContainer, it) }
+            TAB_PROFILE -> profileFragment ?: ProfileFragment().also { profileFragment = it; transaction.add(R.id.fragmentContainer, it) }
+            else -> homeFragment ?: HomeFragment().also { homeFragment = it; transaction.add(R.id.fragmentContainer, it) }
         }
 
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
-            .commit()
+        transaction.show(target)
+        activeFragment = target
+        transaction.commit()
 
         updateNavHighlight(tab)
     }
@@ -209,6 +278,10 @@ class MainActivity : AppCompatActivity() {
                 binding.navProfileText.alpha = 1f
             }
         }
+    }
+
+    fun navigateToSaved() {
+        switchTab(TAB_SAVED)
     }
 
     private fun openCamera() {

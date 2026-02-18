@@ -51,7 +51,7 @@
                 android:text="@string/nav_home"
                 android:textColor="@color/deep_blue"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_medium"
                 android:textAllCaps="true"
                 android:letterSpacing="-0.05"
                 android:alpha="0.4" />
@@ -83,7 +83,7 @@
                 android:text="@string/nav_map"
                 android:textColor="@color/deep_blue"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_medium"
                 android:textAllCaps="true"
                 android:letterSpacing="-0.05"
                 android:alpha="0.4" />
@@ -145,7 +145,7 @@
                 android:text="@string/nav_saved"
                 android:textColor="@color/deep_blue"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_medium"
                 android:textAllCaps="true"
                 android:letterSpacing="-0.05"
                 android:alpha="0.4" />
@@ -177,7 +177,7 @@
                 android:text="@string/nav_profile"
                 android:textColor="@color/deep_blue"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_medium"
                 android:textAllCaps="true"
                 android:letterSpacing="-0.05"
                 android:alpha="0.4" />

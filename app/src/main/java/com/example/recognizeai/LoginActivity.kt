@@ -74,6 +74,45 @@ class LoginActivity : AppCompatActivity() {
         binding.btnGuest.setOnClickListener {
             loginAsGuest()
         }
+
+        updateLanguageDisplay()
+
+        binding.btnLanguage.setOnClickListener {
+            showLanguagePicker()
+        }
+    }
+
+    private fun updateLanguageDisplay() {
+        val lang = LocaleHelper.getLanguageByCode(LocaleHelper.getCurrentLanguageCode())
+        binding.tvCurrentLanguage.text = "${lang.flag} ${lang.nativeName}"
+    }
+
+    private fun showLanguagePicker() {
+        val sheet = LanguageBottomSheet()
+        sheet.onLanguageSelected = { lang ->
+            session.language = lang.code
+            LocaleHelper.setLocale(lang.code)
+            saveLanguageToServer(lang.code)
+        }
+        sheet.show(supportFragmentManager, LanguageBottomSheet.TAG)
+    }
+
+    private fun saveLanguageToServer(langCode: String) {
+        val uid = session.userId
+        if (uid <= 0) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val json = JSONObject().put("language", langCode)
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/users/$uid/language")
+                    .put(body)
+                    .build()
+                client.newCall(request).execute().close()
+            } catch (e: Exception) {
+                Log.e("LoginActivity", "Failed to save language to server", e)
+            }
+        }
     }
 
     private fun setupGoogleSignIn() {
@@ -107,6 +146,7 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 val user = JSONObject(responseBody)
+                val serverLang = user.optString("language", "")
 
                 withContext(Dispatchers.Main) {
                     session.saveUser(
@@ -114,6 +154,10 @@ class LoginActivity : AppCompatActivity() {
                         authType = "guest",
                         displayName = user.optString("display_name", "Guest")
                     )
+                    if (serverLang.isNotEmpty() && serverLang != LocaleHelper.getCurrentLanguageCode()) {
+                        session.language = serverLang
+                        LocaleHelper.setLocale(serverLang)
+                    }
                     navigateToHome()
                 }
             } catch (e: Exception) {
@@ -157,6 +201,7 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 val user = JSONObject(responseBody)
+                val serverLang = user.optString("language", "")
 
                 withContext(Dispatchers.Main) {
                     session.saveUser(
@@ -166,6 +211,10 @@ class LoginActivity : AppCompatActivity() {
                         email = user.optString("email", email),
                         photoUrl = user.optString("photo_url", photoUrl)
                     )
+                    if (serverLang.isNotEmpty() && serverLang != LocaleHelper.getCurrentLanguageCode()) {
+                        session.language = serverLang
+                        LocaleHelper.setLocale(serverLang)
+                    }
                     navigateToHome()
                 }
             } catch (e: Exception) {

@@ -9,14 +9,21 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -51,6 +58,7 @@ class AnalyzingActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var apiJob: Job? = null
     private var apiResult: Intent? = null
+    private var apiError: String? = null
     private var animationsFinished = false
     private var apiFinished = false
     private var currentLatitude: Double? = null
@@ -186,13 +194,26 @@ class AnalyzingActivity : AppCompatActivity() {
         waitingAnimator?.cancel()
         waitingAnimator = null
         binding.tvStatusSubtitle.alpha = 1f
-        binding.tvPercent.text = "100%"
-        binding.tvStatusSubtitle.text = "Analysis complete"
         animationsFinished = true
         apiFinished = true
-        val intent = apiResult ?: Intent(this, LandmarkDetailActivity::class.java)
-        startActivity(intent)
-        finish()
+
+        if (apiResult != null) {
+            binding.tvPercent.text = "100%"
+            binding.tvStatusSubtitle.text = "Analysis complete"
+            startActivity(apiResult!!)
+            finish()
+        } else {
+            // No data from server — don't show empty template page
+            val errMsg = apiError ?: "No response from server"
+            binding.tvPercent.text = "!"
+            binding.tvStatusSubtitle.text = errMsg
+            Toast.makeText(this, "Analysis failed: $errMsg", Toast.LENGTH_LONG).show()
+            Log.e("AnalyzingActivity", "Navigate failed — apiError: $errMsg")
+            // Go back after 3 seconds so user can read the error
+            handler.postDelayed({
+                if (!isFinishing) finish()
+            }, 3000)
+        }
     }
 
     private fun tryNavigate() {
@@ -264,27 +285,54 @@ class AnalyzingActivity : AppCompatActivity() {
     }
 
     private fun compressImage(photoUri: Uri): Pair<ByteArray, Uri>? {
+        // Read EXIF orientation before decoding
+        val rotation = try {
+            contentResolver.openInputStream(photoUri)?.use { exifStream ->
+                val exif = ExifInterface(exifStream)
+                when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+            } ?: 0f
+        } catch (e: Exception) {
+            Log.e("AnalyzingActivity", "Failed to read EXIF", e)
+            0f
+        }
+
         val inputStream = contentResolver.openInputStream(photoUri) ?: return null
         val original = BitmapFactory.decodeStream(inputStream)
         inputStream.close()
         if (original == null) return null
 
-        val maxEdge = 1200
-        val scale = if (original.width > original.height) {
-            maxEdge.toFloat() / original.width
+        // Apply EXIF rotation
+        val rotated = if (rotation != 0f) {
+            val matrix = Matrix()
+            matrix.postRotate(rotation)
+            val rotBmp = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
+            original.recycle()
+            rotBmp
         } else {
-            maxEdge.toFloat() / original.height
+            original
+        }
+
+        val maxEdge = 1200
+        val scale = if (rotated.width > rotated.height) {
+            maxEdge.toFloat() / rotated.width
+        } else {
+            maxEdge.toFloat() / rotated.height
         }
 
         val bitmap = if (scale < 1f) {
             Bitmap.createScaledBitmap(
-                original,
-                (original.width * scale).toInt(),
-                (original.height * scale).toInt(),
+                rotated,
+                (rotated.width * scale).toInt(),
+                (rotated.height * scale).toInt(),
                 true
             )
         } else {
-            original
+            rotated
         }
 
         val dir = File(cacheDir, "compressed_images")
@@ -293,8 +341,8 @@ class AnalyzingActivity : AppCompatActivity() {
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 65, out)
         }
-        if (bitmap !== original) bitmap.recycle()
-        original.recycle()
+        if (bitmap !== rotated) bitmap.recycle()
+        rotated.recycle()
 
         val compressedUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
         return Pair(file.readBytes(), compressedUri)
@@ -303,6 +351,9 @@ class AnalyzingActivity : AppCompatActivity() {
     private fun analyzeWithServer(photoUri: Uri) {
         apiJob = CoroutineScope(Dispatchers.IO).launch {
             try {
+                val analysisLang = SessionManager(this@AnalyzingActivity).language
+                Log.d("AnalyzingActivity", "Analysis language: $analysisLang")
+
                 // Load and compress image first (outside timeout)
                 val compressed = compressImage(photoUri)
                 val imageBytes: ByteArray
@@ -343,6 +394,7 @@ class AnalyzingActivity : AppCompatActivity() {
                         )
                         .addFormDataPart("user_id", session.userId.toString())
                         .addFormDataPart("device_id", session.deviceId)
+                        .addFormDataPart("language", analysisLang)
 
                     currentLatitude?.let { builder.addFormDataPart("latitude", it.toString()) }
                     currentLongitude?.let { builder.addFormDataPart("longitude", it.toString()) }
@@ -359,17 +411,23 @@ class AnalyzingActivity : AppCompatActivity() {
                     Log.d("AnalyzingActivity", "Server response: $responseBody")
 
                     if (!response.isSuccessful) {
-                        throw Exception("Server error: ${response.code} - $responseBody")
+                        // Parse server error for user-friendly message
+                        val errorMsg = try {
+                            val errJson = JSONObject(responseBody)
+                            errJson.optString("message", "Server error: ${response.code}")
+                        } catch (_: Exception) {
+                            "Server error: ${response.code}"
+                        }
+                        throw Exception(errorMsg)
                     }
 
                     JSONObject(responseBody)
                 }
 
                 if (json == null) {
-                    // Timed out
                     Log.e("AnalyzingActivity", "Analysis timed out after 45 seconds")
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@AnalyzingActivity, "Analysis timed out — please try again", Toast.LENGTH_LONG).show()
+                        apiError = "Request timed out"
                         apiFinished = true
                         tryNavigate()
                     }
@@ -395,6 +453,7 @@ class AnalyzingActivity : AppCompatActivity() {
                         putExtra("nearby2_category", json.optString("nearby2_category", ""))
                         putExtra("nearby3_name", json.optString("nearby3_name", ""))
                         putExtra("nearby3_category", json.optString("nearby3_category", ""))
+                        putExtra("language", analysisLang)
                     }
                     // Save to local storage for offline/guest access
                     val prefs = getSharedPreferences("recognizeai_landmarks", MODE_PRIVATE)
@@ -417,6 +476,7 @@ class AnalyzingActivity : AppCompatActivity() {
                         put("nearby2_category", json.optString("nearby2_category", ""))
                         put("nearby3_name", json.optString("nearby3_name", ""))
                         put("nearby3_category", json.optString("nearby3_category", ""))
+                        put("language", analysisLang)
                         put("is_saved", false)
                         put("rating", 0)
                         put("created_at", java.time.Instant.now().toString())
@@ -444,22 +504,44 @@ class AnalyzingActivity : AppCompatActivity() {
                             lng = currentLongitude,
                             createdAt = java.time.Instant.now().toString()
                         )
-                        Toast.makeText(this@AnalyzingActivity, "No internet — photo saved for later", Toast.LENGTH_LONG).show()
-                        // Navigate to MainActivity Saved tab
-                        val mainIntent = Intent(this@AnalyzingActivity, MainActivity::class.java).apply {
-                            putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_SAVED)
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        }
-                        startActivity(mainIntent)
-                        finish()
+                        // Stop animations
+                        percentAnimator?.cancel()
+                        waitingAnimator?.cancel()
+                        hasNavigated = true
+
+                        // Show styled no-internet dialog
+                        showNoInternetDialog()
                     } else {
-                        Toast.makeText(this@AnalyzingActivity, "Analysis failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        apiError = e.message ?: "Unknown error"
                         apiFinished = true
                         tryNavigate()
                     }
                 }
             }
         }
+    }
+
+    private fun showNoInternetDialog() {
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_no_internet)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(false)
+
+        dialog.findViewById<TextView>(R.id.btnGoToSaved).setOnClickListener {
+            dialog.dismiss()
+            val mainIntent = Intent(this, MainActivity::class.java).apply {
+                putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_SAVED)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(mainIntent)
+            finish()
+        }
+
+        dialog.show()
     }
 
     private fun loadCapturedImage() {

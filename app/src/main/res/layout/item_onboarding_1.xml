@@ -10,78 +10,113 @@
         android:layout_width="match_parent"
         android:layout_height="64dp" />
 
-    <!-- Illustration area -->
+    <!-- Illustration area - Square image like HTML design -->
     <FrameLayout
-        android:layout_width="320dp"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_gravity="center">
+        android:layout_gravity="center"
+        android:layout_marginHorizontal="24dp">
 
-        <!-- Outer circle -->
-        <View
-            android:layout_width="300dp"
-            android:layout_height="300dp"
+        <!-- Square image container with rounded corners -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:background="@drawable/bg_circle_border" />
+            android:layout_marginVertical="8dp"
+            android:background="@drawable/bg_onboarding_photo"
+            android:clipToOutline="true"
+            android:elevation="8dp">
 
-        <!-- Middle circle -->
-        <View
-            android:layout_width="260dp"
-            android:layout_height="260dp"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_circle_border" />
-
-        <!-- Inner circle -->
-        <View
-            android:layout_width="220dp"
-            android:layout_height="220dp"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_circle_border" />
-
-        <!-- Dashed circle -->
-        <View
-            android:layout_width="240dp"
-            android:layout_height="240dp"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_circle_dashed"
-            android:rotation="25" />
-
-        <!-- Icon card -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_icon_card"
-            android:elevation="16dp"
-            android:padding="40dp">
-
+            <!-- Landmark image (person holding phone) -->
             <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@android:drawable/ic_menu_camera"
-                android:tint="@color/gold_accent"
-                android:contentDescription="Camera" />
+                android:id="@+id/imgOnboardingLandmark"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="Landmark" />
 
-        </LinearLayout>
+            <!-- Gradient overlay from bottom -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_onboarding_gradient" />
 
-        <!-- Gold dot decoration -->
-        <View
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:layout_gravity="end"
-            android:layout_marginTop="80dp"
-            android:layout_marginEnd="60dp"
-            android:background="@drawable/bg_gold_icon_circle"
-            android:elevation="2dp" />
+            <!-- Scan beam animation -->
+            <View
+                android:id="@+id/scanBeamOnboarding"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_gravity="top"
+                android:background="@color/gold_accent"
+                android:alpha="0.7" />
 
-        <!-- Small dot decoration -->
-        <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_gravity="start"
-            android:layout_marginTop="180dp"
-            android:layout_marginStart="40dp"
-            android:background="@drawable/bg_circle_border" />
+            <!-- Scanning card at bottom -->
+            <LinearLayout
+                android:id="@+id/scanningCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:layout_margin="16dp"
+                android:alpha="0"
+                android:background="@drawable/bg_scanning_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp"
+                android:translationY="40dp">
+
+                <!-- Camera icon circle -->
+                <FrameLayout
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_scanning_icon">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_camera"
+                        android:tint="@color/white"
+                        android:importantForAccessibility="no" />
+
+                </FrameLayout>
+
+                <!-- Text -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvScanningLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_bold"
+                        android:letterSpacing="0.1"
+                        android:text="@string/scanning"
+                        android:textAllCaps="true"
+                        android:textColor="@color/deep_blue"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:id="@+id/tvScanningName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:alpha="0"
+                        android:fontFamily="@font/inter_bold"
+                        android:text="@string/eiffel_tower_paris"
+                        android:textColor="@color/slate_900"
+                        android:textSize="15sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </FrameLayout>
 
     </FrameLayout>
 
@@ -100,7 +135,7 @@
             android:text="@string/onboarding_title_1"
             android:textColor="@color/deep_blue"
             android:textSize="36sp"
-            android:fontFamily="@font/plus_jakarta_sans_bold"
+            android:fontFamily="@font/inter_bold"
             android:gravity="center"
             android:letterSpacing="-0.02"
             android:lineSpacingMultiplier="1.1" />
@@ -112,7 +147,7 @@
             android:text="@string/onboarding_desc_1"
             android:textColor="@color/deep_blue_70"
             android:textSize="16sp"
-            android:fontFamily="@font/plus_jakarta_sans_medium"
+            android:fontFamily="@font/inter_medium"
             android:gravity="center"
             android:lineSpacingMultiplier="1.4" />
 
@@ -167,7 +202,7 @@
                     android:text="@string/next"
                     android:textColor="@color/deep_blue"
                     android:textSize="20sp"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:fontFamily="@font/inter_bold"
                     android:textAllCaps="true"
                     android:letterSpacing="0.05" />
 

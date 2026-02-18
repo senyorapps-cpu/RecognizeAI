@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingHorizontal="28dp"
+    android:paddingTop="36dp"
+    android:paddingBottom="24dp">
+
+    <!-- Wifi off icon in circle -->
+    <FrameLayout
+        android:layout_width="88dp"
+        android:layout_height="88dp"
+        android:background="@drawable/bg_icon_circle_blue">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_wifi_off"
+            android:importantForAccessibility="no" />
+
+    </FrameLayout>
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:fontFamily="@font/inter_bold"
+        android:gravity="center"
+        android:text="@string/no_internet_title"
+        android:textColor="@color/deep_blue"
+        android:textSize="22sp" />
+
+    <!-- Message -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="@font/inter_medium"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.4"
+        android:text="@string/no_internet_message"
+        android:textColor="@color/deep_blue_50"
+        android:textSize="14sp" />
+
+    <!-- Photo saved indicator -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/bg_offline_badge"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@drawable/ic_bookmark_filled"
+            android:tint="@color/gold_accent"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:fontFamily="@font/inter_semibold"
+            android:text="@string/photo_saved_offline"
+            android:textColor="@color/deep_blue"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!-- Go to Saved button -->
+    <TextView
+        android:id="@+id/btnGoToSaved"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/bg_contact_button"
+        android:fontFamily="@font/inter_bold"
+        android:gravity="center"
+        android:text="@string/go_to_saved"
+        android:textColor="@color/white"
+        android:textSize="15sp" />
+
+</LinearLayout>

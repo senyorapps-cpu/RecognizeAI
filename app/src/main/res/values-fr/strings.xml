@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TravelAI</string>
+    <string name="onboarding_title_1">Explorez le Monde</string>
+    <string name="onboarding_desc_1">Découvrez des secrets cachés et des merveilles culturelles grâce à notre objectif alimenté par l\'IA.</string>
+    <string name="onboarding_title_2">Journal Intelligent</string>
+    <string name="onboarding_desc_2">Organisez automatiquement vos photos dans de magnifiques journaux avec des détails IA.</string>
+    <string name="onboarding_title_3">Commencez Votre Voyage</string>
+    <string name="onboarding_desc_3">Capturez votre premier souvenir et laissez l\'IA raconter l\'histoire.</string>
+    <string name="skip">Passer</string>
+    <string name="next">Suivant</string>
+    <string name="get_started">Commencer</string>
+    <string name="sign_in">Se Connecter</string>
+    <string name="welcome_back">Bienvenue sur Travel Snap AI</string>
+    <string name="continue_with_google">Continuer avec Google</string>
+    <string name="continue_as_guest">Continuer en tant qu\'invité</string>
+    <string name="language_english">Français</string>
+    <string name="privacy_policy">Politique de Confidentialité</string>
+    <string name="terms_of_service">Conditions d\'Utilisation</string>
+    <string name="ai_generated">Généré par IA</string>
+    <string name="rome">Rome</string>
+    <string name="explore_today">Explorez Aujourd\'hui</string>
+    <string name="location_info">Paris, France \u2022 24\u00B0C</string>
+    <string name="last_capture">Dernière Capture</string>
+    <string name="your_latest_snap">Votre Dernière Photo</string>
+    <string name="see_history">Voir l\'Historique</string>
+    <string name="view_details">Voir Détails</string>
+    <string name="tap_to_view">Appuyez pour voir les détails</string>
+    <string name="top_places">Meilleurs Endroits</string>
+    <string name="view_all">Voir Tout</string>
+    <string name="paris">Paris</string>
+    <string name="venice">Venise</string>
+    <string name="london">Londres</string>
+    <string name="nav_home">Accueil</string>
+    <string name="nav_map">Carte</string>
+    <string name="nav_saved">Enregistré</string>
+    <string name="nav_profile">Profil</string>
+    <string name="match_confirmed">Correspondance Confirmée</string>
+    <string name="match_found">Correspondance Trouvée</string>
+    <string name="empire_state_building">Empire State Building</string>
+    <string name="gallery">Galerie</string>
+    <string name="flash">Flash</string>
+    <string name="nav_explore">Explorer</string>
+    <string name="nav_capture">Capturer</string>
+    <string name="nav_history">Historique</string>
+    <string name="identifying_landmark">Identification du Monument\u2026</string>
+    <string name="analyzing_status">Analyse de la structure et de l\'histoire\u2026</string>
+    <string name="structural_apex">Sommet Structurel</string>
+    <string name="lattice_pattern">Motif en Treillis Identifié</string>
+    <string name="historical_match">Correspondance Historique : 98,4%%</string>
+    <string name="base_geo">Coordonnées Géographiques de Base</string>
+    <string name="cancel">Annuler</string>
+    <string name="discovery_report">Rapport de Découverte</string>
+    <string name="the_colosseum">Le Colisée</string>
+    <string name="colosseum_location">Piazza del Colosseo, Rome, Italie</string>
+    <string name="year_built">Année de Construction</string>
+    <string name="year_built_value">80 ap. J.-C.</string>
+    <string name="status_label">Statut</string>
+    <string name="unesco_site">Site UNESCO</string>
+    <string name="architect">Architecte</string>
+    <string name="flavian_dynasty">Dynastie Flavienne</string>
+    <string name="capacity">Capacité</string>
+    <string name="capacity_value">80 000 Places</string>
+
+    <string name="listen_story">\\u00C9couter l\'histoire</string>
+
+    <string name="colosseum_text_1">Le Colisée, également connu sous le nom d\'Amphithéâtre Flavien, se dresse comme le symbole le plus emblématique de la Rome impériale. Achevé en 80 ap. J.-C. sous l\'empereur Titus, cette merveille architecturale a été conçue pour mettre en valeur le pouvoir absolu de l\'empire.</string>
+    <string name="colosseum_quote">\u201CUn témoignage de la grandeur et de la brutalité de l\'Empire romain, il reste le plus grand amphithéâtre encore debout dans le monde.\u201D</string>
+    <string name="colosseum_text_2">Au-delà de ses murs de pierre massifs, la structure contenait un système complexe de voûtes et de couloirs, permettant l\'entrée et la sortie rapides de milliers de spectateurs\u2014un précurseur de la conception des stades modernes.</string>
+    <string name="view_on_map">VOIR SUR LA CARTE INTERACTIVE</string>
+    <string name="refined_surroundings">Environs Raffinés</string>
+    <string name="all_places">Tous les Endroits</string>
+    <string name="roman_forum">Forum Romain</string>
+    <string name="cultural_district">Quartier Culturel</string>
+    <string name="palatine_hill">Mont Palatin</string>
+    <string name="ancient_ruins">Ruines Antiques</string>
+    <string name="arch_of_constantine">Arc de Constantin</string>
+    <string name="monuments">Monuments</string>
+    <string name="tap_to_rate">Appuyez pour noter ce lieu</string>
+    <string name="retake_photo">Reprendre la Photo</string>
+    <string name="save_to_journal">Enregistrer dans le Journal</string>
+    <string name="add_to_trip">Ajouter au Voyage</string>
+    <string name="saved_photos_title">Photos Enregistrées</string>
+    <string name="chip_all">Tout</string>
+    <string name="chip_recent">Récent</string>
+    <string name="chip_landmarks">Monuments</string>
+    <string name="chip_nature">Nature</string>
+    <string name="no_captures_yet">Aucune capture pour le moment</string>
+    <string name="take_first_photo">Prenez votre premier monument !</string>
+    <string name="no_saved_photos">Aucune photo enregistrée pour le moment</string>
+    <string name="no_saved_photos_desc">Prenez un monument en photo et enregistrez-le dans votre journal</string>
+    <string name="pending_analysis">Analyse en Attente</string>
+    <string name="choose_language">Choisir la Langue</string>
+    <string name="language_label">Langue</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Mon Travel Hub</string>
+    <string name="profile_hello">Bonjour, %s !</string>
+    <string name="profile_hello_guest">Bonjour cher invité</string>
+    <string name="profile_subtitle_guest">Explorateur Invité</string>
+    <string name="profile_subtitle_google">Compte Google</string>
+    <string name="profile_total_snaps">Total de Photos</string>
+    <string name="profile_countries">Pays</string>
+    <string name="profile_journals">Journaux</string>
+    <string name="profile_account_settings">Paramètres du Compte</string>
+    <string name="profile_subscription">Abonnement</string>
+    <string name="profile_appearance">Apparence</string>
+    <string name="profile_support">Assistance</string>
+    <string name="profile_support_title">Besoin d\'aide avec vos photos ?</string>
+    <string name="profile_support_desc">Notre équipe est disponible 24h/24</string>
+    <string name="profile_contact_us">Nous Contacter</string>
+    <string name="profile_logout">Déconnexion</string>
+
+    <!-- Map -->
+    <string name="map_explore_ai">Explorer avec l\'IA</string>
+    <string name="map_navigate">Naviguer</string>
+    <string name="map_landmark">Monument</string>
+    <string name="map_category_landmark">Monument</string>
+    <string name="map_category_museum">Musée</string>
+    <string name="map_category_religious">Site Religieux</string>
+    <string name="map_category_viewpoint">Point de Vue</string>
+    <string name="map_category_park">Parc et Jardin</string>
+    <string name="map_category_food">Cuisine Locale</string>
+    <string name="map_category_market">Marché</string>
+    <string name="map_category_tourist">Attraction Touristique</string>
+
+    <!-- Contact Us -->
+    <string name="contact_us_title">Contacter le Support</string>
+    <string name="contact_topic">Sélectionner un Sujet</string>
+    <string name="contact_topic_billing">Facturation</string>
+    <string name="contact_topic_analysis">Analyse</string>
+    <string name="contact_topic_bug">Signaler un Bug</string>
+    <string name="contact_topic_general">Général</string>
+    <string name="contact_message_hint">Décrivez votre problème ou question...</string>
+    <string name="contact_attach">Joindre une Capture</string>
+    <string name="contact_send">Envoyer le Message</string>
+    <string name="contact_success">Message envoyé avec succès !</string>
+    <string name="contact_error_topic">Veuillez sélectionner un sujet</string>
+    <string name="contact_error_message">Veuillez saisir un message</string>
+    <string name="delete_confirm_title">Supprimer le Monument</string>
+    <string name="delete_confirm_message">Êtes-vous sûr de vouloir supprimer ce monument ?</string>
+    <string name="delete">Supprimer</string>
+
+    <!-- Offline/Online -->
+    <string name="no_internet_title">Pas de connexion Internet</string>
+    <string name="no_internet_message">Votre photo a été sauvegardée et sera analysée lorsque vous serez de nouveau en ligne.</string>
+    <string name="photo_saved_offline">Photo sauvegardée hors ligne</string>
+    <string name="go_to_saved">Aller aux sauvegardés</string>
+    <string name="saved_offline">Sauvegardé hors ligne</string>
+    <string name="back_online_title">Vous êtes de retour en ligne !</string>
+    <string name="back_online_message">Vous avez %1$d %2$s à analyser</string>
+    <string name="back_online_photo_singular">photo</string>
+    <string name="back_online_photo_plural">photos</string>
+    <string name="analyze_now">Analyser maintenant</string>
+    <string name="later">Plus tard</string>
+    <string name="analyzing_pending">Analyse des photos en attente\u2026</string>
+    <string name="photos_analyzed_success">photo(s) analysées avec succès !</string>
+    <string name="analyzed_some_failed">analysées, %1$d échouées — réessai ultérieur</string>
+
+    <!-- Onboarding Animation -->
+    <string name="scanning">Numérisation</string>
+    <string name="eiffel_tower_paris">Tour Eiffel, Paris</string>
+</resources>

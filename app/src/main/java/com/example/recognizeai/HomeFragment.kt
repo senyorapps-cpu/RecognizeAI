@@ -1,21 +1,39 @@
 package com.example.recognizeai
 
+import android.Manifest
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.example.recognizeai.databinding.FragmentHomeBinding
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class HomeFragment : Fragment() {
 
@@ -23,30 +41,21 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
     private var lastCaptureEntry: JSONObject? = null
 
-    private data class TopPlace(
-        val name: String,
-        val location: String,
-        val imageUrl: String
-    )
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
 
-    private val topPlaces = listOf(
-        TopPlace("Eiffel Tower", "Paris, France",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuA4lvi2KwB33CRmJFwjY-Ae0wK56AAyyrjno0Ngpu1tkNjFCC8slul18FTkwL34TmmTokinOFQp_IduKP60L05cbht7YH9WfJrUoT-PukOM996hjuQxGg1N04ru66ZACGKlWbGyTt_Vm-MzRC4oJpzWgM6bwUaqCYdsnGT5ptUoJheRNSwpJf-w0LUbhWeMBh_wlqXwtGFe57sztHytwEluy_LnEHKQJxTc2eI5yrydJQJGaySIE9x5SI60b6b-SyXtpdZmtFMb9QY"),
-        TopPlace("Colosseum", "Rome, Italy",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuBPPjdUmoidMGut4ZivsU1EYUt5gdB0hP6coo4ySRWZEUnav0srJhwFZGS_7LOZSAzViJFaYJ5htcB5Z5tQb2FIY1maAW_SXZ_wMJ8yyPJUn-A2Gsqb8md5y6YFS3QnjEUEXPYntKtgrautJn5dWmaSnQPGy_-11yZ02xiDhTz8hByrzLXHgSsexR1K9h154R1Do06Tc9y0qwHWPZscgqDUpxDjWYcnvoe22pHGud4iBmsRdcR588sSvdbbA5RZOLAHCO6zrAMIon4"),
-        TopPlace("Grand Canal", "Venice, Italy",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuC_cGImP-6Kw2nqm9rUxPVid8GSqGUZhGjW6rDtKlASrDQpUC2PlXTbSswUScyn5CYGGvhw6Azp2Xf6UH3t4s8aOckTF-8sDjHVgyRAByqefXC72CqRKVQMiYR4vcJpZN5Js5uuJjKxMoFkVmBtP4C9gxmYkvZnSx6pQooUZ4raikNqTq-dNV3F-BVEGsnID-5g4pmOJ1iqQXIijF9FW2a9RLY5f0gZoicYvpxAb4zYjm304h6SEBfNl5AyjQca7SKFRA2IutXfl6M"),
-        TopPlace("Big Ben", "London, UK",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuDYPbG8yJ0lw3-w4Zgoo8BAQaHNPR0YUYk3AIfhc4XBIj3_C0A8pbsrf19NTk6bqFftX_5tjCikQe7BC9GdMDsYrhVd4-NA-UXU1fiIL-Z91D8m7cqPVhhi1GsJS3RclKsubGgxEFXEDhxjphhhR7BDwNlKcLZqnMYCMRDnJhbEfzdvQUwLqGeTT7eHePFzF81fX_Rj29BXYvUgdeSfy_NvxbKx0cbKvTsTNxbRRCXXQp9F8JPN-qgO9XJzDQ2hBVq4F8N4ZmnSOdQ"),
-        TopPlace("Santorini", "Greece",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuARuqCvlgoE_TGjoCzGU_3WxKgBvLslhvcXDphjI0krM22T-hdx013GKUI45LM5t9vda2pDHmIgmRwlYZTy1mF2V50dPlFSacl9UcAbR2uNJjZ3ucW0R8MQuFQBJ6ZiG5K-19J5HPiDFi9afHmEO2Tk_aOKo3mDoDOJQw0aTc5uJnjK_adyTy4GrFbMl1z-QEIPoPP1jqVDEmVi00NBt_F7-qPnmL1-6KeygLpDKUucfxEdyL11XJUaSnMtiiF9fN9s8dbNkKfSBa8"),
-        TopPlace("Roman Forum", "Rome, Italy",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuAk4qdrNvqi1HUyPnrZijZC3DPjzjwyJSD0N6FvOSyNmW6pDlJI7TMKrj8uxgX3aNZOYc3GT9UIXst6rRYwXfQkau6Wm-dEC-ereaVuS666-sFs2Lx1ovbXITMrUyUa-wKYXLzNhDDqqa6EtmASNCVmx0Oy6iZFoSNqrFtcr0yq7gNyexRYjhiEEdO7M-56j-IKv0G4qj1MOnbJoacELVCs_P4C6Fzx_5fiRpJjHZYImIrjkkpsKEb6WUEpHBppuHy7qQJ3DGw5cN8"),
-        TopPlace("Kinkaku-ji", "Kyoto, Japan",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuBVdcd0_s5xSTzsqqcAOdaffkO1IjkYYVPK0vIDp-pObErlxhk5Gty4sSKa1KpN7b_kBjUyEkLBMKsuhGTB2aQdKFw6W5h81JhPAcck_7h3BJAUNOTvbXya-MxxWfnDXD5RUr0YvP0JKcpf2uMZgrxFgnd4mP0fC-wdy7g-IRrBAobPg-Mh5nfsiBxvlC20JWKR8pkBdTZG8eHODIsgJRlndrzfIFAAPtO0a5DOi8vGlx92AWNecbTEze2OqoqExoUAjBpB1dkxIuo"),
-        TopPlace("Palatine Hill", "Rome, Italy",
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuDS1U77zQ_7hHRT8ljWCwCmpyz6DlN-LMwV2Kd4wRJt9z27i8_GkAd5yX3qNKWfZuDoB7FO-hHFg1xM8TS2jiJHLpn45Cs59ewwBY7aFKiw51tVKWjXdhXWw23dskxzhw5mqf0VXJwQr9r06MtvHeAc4ovpQXxJKonMnJMG_0DS1_nL_rVpoyMKZFeOaimcb544iOwz_5pCVur_k3LptDIr4eyQUQdmMcEbXfF2Peipzoi4DkaeR7sh7gPmS3PGuW_a38p4E3fLNSg")
-    )
+    private val nearbyPlaces = mutableListOf<JSONObject>()
+
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            loadTopPlaces()
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -57,93 +66,332 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         loadTopPlaces()
         setupClickListeners()
+        loadLastCapture()
     }
 
-    override fun onResume() {
-        super.onResume()
-        loadLastCapture()
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (!hidden && _binding != null) {
+            loadLastCapture()
+        }
     }
 
     private fun loadLastCapture() {
         if (_binding == null) return
+        val session = SessionManager(requireContext())
+        val userId = session.userId
+        val deviceId = session.deviceId
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val url = if (userId > 0) {
+                    "${SessionManager.BASE_URL}/api/user/$userId/landmarks?device_id=$deviceId"
+                } else {
+                    "${SessionManager.BASE_URL}/api/landmarks/by-device?device_id=$deviceId"
+                }
+                val request = Request.Builder().url(url).get().build()
+                val response = client.newCall(request).execute()
+                val body = response.body?.string() ?: "[]"
+                if (!response.isSuccessful) throw Exception("Server error: ${response.code}")
+
+                val jsonArray = JSONArray(body)
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    if (jsonArray.length() > 0) {
+                        val last = jsonArray.getJSONObject(jsonArray.length() - 1)
+                        val imageUrl = "${SessionManager.BASE_URL}${last.optString("image_url", "")}"
+                        last.put("photo_uri", imageUrl)
+                        last.put("server_id", last.optLong("id", -1L))
+                        lastCaptureEntry = last
+                        binding.txtLastCaptureName.text = last.optString("name", "Unknown")
+                        binding.txtLastCaptureLocation.text = last.optString("location", "")
+
+                        Glide.with(this@HomeFragment)
+                            .load(imageUrl)
+                            .centerCrop()
+                            .into(binding.imgLastCapture)
+                    } else {
+                        loadLastCaptureFromLocal()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeFragment", "Failed to load last capture from server", e)
+                withContext(Dispatchers.Main) { loadLastCaptureFromLocal() }
+            }
+        }
+    }
+
+    private fun loadLastCaptureFromLocal() {
+        if (_binding == null) return
         val prefs = requireContext().getSharedPreferences("recognizeai_landmarks", Context.MODE_PRIVATE)
         val arr = JSONArray(prefs.getString("landmarks", "[]"))
 
-        val cornerRadius = (20 * resources.displayMetrics.density).toInt()
+        // Find last non-pending (analyzed) item
+        var last: JSONObject? = null
+        for (i in arr.length() - 1 downTo 0) {
+            val obj = arr.getJSONObject(i)
+            if (obj.optString("status", "") != "pending") {
+                last = obj
+                break
+            }
+        }
 
-        if (arr.length() > 0) {
-            val last = arr.getJSONObject(arr.length() - 1)
+        if (last != null) {
             lastCaptureEntry = last
             binding.txtLastCaptureName.text = last.optString("name", "Unknown")
+            binding.txtLastCaptureLocation.text = last.optString("location", "")
 
             val photoUri = last.optString("photo_uri", "")
             if (photoUri.isNotEmpty()) {
                 Glide.with(this)
                     .load(Uri.parse(photoUri))
-                    .transform(CenterCrop(), RoundedCorners(cornerRadius))
+                    .centerCrop()
                     .into(binding.imgLastCapture)
             }
         } else {
             lastCaptureEntry = null
-            val randomPlace = topPlaces.random()
-            binding.txtLastCaptureName.text = randomPlace.name
-            Glide.with(this)
-                .load(randomPlace.imageUrl)
-                .transform(CenterCrop(), RoundedCorners(cornerRadius))
-                .into(binding.imgLastCapture)
+            binding.txtLastCaptureName.text = getString(R.string.no_captures_yet)
+            binding.txtLastCaptureLocation.text = getString(R.string.take_first_photo)
         }
     }
 
     private fun loadTopPlaces() {
+        if (!hasLocationPermission()) {
+            requestLocationPermission.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+            return
+        }
+
+        try {
+            val fusedClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+            fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        fetchNearbyPlaces(location.latitude, location.longitude)
+                    } else {
+                        fusedClient.lastLocation.addOnSuccessListener { last ->
+                            if (last != null) {
+                                fetchNearbyPlaces(last.latitude, last.longitude)
+                            }
+                        }
+                    }
+                }
+        } catch (_: SecurityException) {}
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+               ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun fetchNearbyPlaces(lat: Double, lng: Double) {
+        val lang = LocaleHelper.getCurrentLanguageCode()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val url = "${SessionManager.BASE_URL}/api/places/nearby?lat=$lat&lng=$lng&radius=5000&language=$lang"
+                val request = Request.Builder().url(url).get().build()
+                val response = client.newCall(request).execute()
+                val body = response.body?.string() ?: "[]"
+
+                if (response.isSuccessful) {
+                    val arr = JSONArray(body)
+                    val places = mutableListOf<JSONObject>()
+                    for (i in 0 until minOf(arr.length(), 5)) {
+                        places.add(arr.getJSONObject(i))
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        nearbyPlaces.clear()
+                        nearbyPlaces.addAll(places)
+                        displayTopPlaces()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeFragment", "Failed to load nearby places", e)
+            }
+        }
+    }
+
+    private fun displayTopPlaces() {
+        if (_binding == null) return
         val cornerRadius = (20 * resources.displayMetrics.density).toInt()
         val inflater = LayoutInflater.from(requireContext())
+        binding.topPlacesContainer.removeAllViews()
 
-        for (place in topPlaces) {
+        for (place in nearbyPlaces) {
             val itemView = inflater.inflate(R.layout.item_top_place, binding.topPlacesContainer, false)
 
             val imgPlace = itemView.findViewById<ImageView>(R.id.imgPlace)
             val txtName = itemView.findViewById<TextView>(R.id.txtPlaceName)
             val txtLocation = itemView.findViewById<TextView>(R.id.txtPlaceLocation)
+            val ratingBadge = itemView.findViewById<LinearLayout>(R.id.ratingBadge)
+            val txtRating = itemView.findViewById<TextView>(R.id.txtPlaceRating)
 
-            txtName.text = place.name
-            txtLocation.text = place.location
+            txtName.text = place.optString("name", "Place")
+            txtLocation.text = place.optString("location", "")
 
-            Glide.with(this)
-                .load(place.imageUrl)
-                .transform(CenterCrop(), RoundedCorners(cornerRadius))
-                .into(imgPlace)
+            // Show rating badge
+            val rating = place.optDouble("rating", 0.0)
+            if (rating > 0) {
+                txtRating.text = String.format("%.1f", rating)
+                ratingBadge.visibility = View.VISIBLE
+            }
+
+            // Load photo
+            val photoRef = place.optString("photo_reference", "")
+            if (photoRef.isNotEmpty()) {
+                val photoUrl = "${SessionManager.BASE_URL}/api/places/photo?ref=$photoRef"
+                Glide.with(this)
+                    .load(photoUrl)
+                    .transform(CenterCrop(), RoundedCorners(cornerRadius))
+                    .into(imgPlace)
+            }
+
+            // On tap — show place detail dialog
+            itemView.setOnClickListener { showPlaceDetailDialog(place) }
 
             binding.topPlacesContainer.addView(itemView)
         }
     }
 
-    private fun setupClickListeners() {
-        binding.cardLastCapture.setOnClickListener {
-            val entry = lastCaptureEntry
-            if (entry != null) {
-                val intent = Intent(requireContext(), LandmarkDetailActivity::class.java).apply {
-                    putExtra("photo_uri", entry.optString("photo_uri", ""))
-                    putExtra("server_id", entry.optLong("server_id", -1L))
-                    putExtra("name", entry.optString("name", ""))
-                    putExtra("location", entry.optString("location", ""))
-                    putExtra("year_built", entry.optString("year_built", ""))
-                    putExtra("status", entry.optString("status", ""))
-                    putExtra("architect", entry.optString("architect", ""))
-                    putExtra("capacity", entry.optString("capacity", ""))
-                    putExtra("narrative_p1", entry.optString("narrative_p1", ""))
-                    putExtra("narrative_quote", entry.optString("narrative_quote", ""))
-                    putExtra("narrative_p2", entry.optString("narrative_p2", ""))
-                    putExtra("nearby1_name", entry.optString("nearby1_name", ""))
-                    putExtra("nearby1_category", entry.optString("nearby1_category", ""))
-                    putExtra("nearby2_name", entry.optString("nearby2_name", ""))
-                    putExtra("nearby2_category", entry.optString("nearby2_category", ""))
-                    putExtra("nearby3_name", entry.optString("nearby3_name", ""))
-                    putExtra("nearby3_category", entry.optString("nearby3_category", ""))
-                    putExtra("from_home", true)
-                    putExtra("rating", entry.optInt("rating", 0))
+    private fun showPlaceDetailDialog(place: JSONObject) {
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(R.layout.dialog_place_detail)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        val imgPlace = dialog.findViewById<ImageView>(R.id.imgPlaceDetail)
+        val tvName = dialog.findViewById<TextView>(R.id.tvPlaceName)
+        val tvLocation = dialog.findViewById<TextView>(R.id.tvPlaceLocation)
+        val tvRating = dialog.findViewById<TextView>(R.id.tvPlaceRating)
+        val tvCategory = dialog.findViewById<TextView>(R.id.tvPlaceCategory)
+        val tvDescription = dialog.findViewById<TextView>(R.id.tvPlaceDescription)
+        val btnNavigate = dialog.findViewById<TextView>(R.id.btnNavigatePlace)
+
+        tvName.text = place.optString("name", "")
+        tvLocation.text = place.optString("location", "")
+
+        val rating = place.optDouble("rating", 0.0)
+        tvRating.text = if (rating > 0) "\u2605 ${String.format("%.1f", rating)}" else ""
+
+        val category = place.optString("category", "Tourist Attraction")
+        tvCategory.text = localizeCategory(category)
+
+        // Load photo
+        val photoRef = place.optString("photo_reference", "")
+        if (photoRef.isNotEmpty()) {
+            val photoUrl = "${SessionManager.BASE_URL}/api/places/photo?ref=$photoRef"
+            val cornerRadius = (16 * resources.displayMetrics.density).toInt()
+            Glide.with(this)
+                .load(photoUrl)
+                .transform(CenterCrop(), RoundedCorners(cornerRadius))
+                .into(imgPlace)
+        }
+
+        // Fetch description
+        tvDescription.text = "\u2026"
+        val placeId = place.optString("place_id", "")
+        if (placeId.isNotEmpty()) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val lang = LocaleHelper.getCurrentLanguageCode()
+                    val url = "${SessionManager.BASE_URL}/api/places/details?place_id=$placeId&language=$lang"
+                    val request = Request.Builder().url(url).get().build()
+                    val response = client.newCall(request).execute()
+                    val body = response.body?.string() ?: "{}"
+                    if (response.isSuccessful) {
+                        val obj = JSONObject(body)
+                        val desc = obj.optString("description", "")
+                        withContext(Dispatchers.Main) {
+                            if (desc.isNotEmpty()) {
+                                tvDescription.text = desc
+                            } else {
+                                tvDescription.visibility = View.GONE
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("HomeFragment", "Failed to fetch place details", e)
+                    withContext(Dispatchers.Main) { tvDescription.visibility = View.GONE }
                 }
-                startActivity(intent)
             }
+        } else {
+            tvDescription.visibility = View.GONE
+        }
+
+        // Navigate button
+        btnNavigate.setOnClickListener {
+            dialog.dismiss()
+            val lat = place.optDouble("latitude")
+            val lng = place.optDouble("longitude")
+            val name = place.optString("name", "")
+            val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(name)})")
+            val mapIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                setPackage("com.google.android.apps.maps")
+            }
+            if (mapIntent.resolveActivity(requireContext().packageManager) != null) {
+                startActivity(mapIntent)
+            } else {
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun localizeCategory(englishCategory: String): String {
+        return when (englishCategory) {
+            "Landmark" -> getString(R.string.map_category_landmark)
+            "Museum" -> getString(R.string.map_category_museum)
+            "Religious Site" -> getString(R.string.map_category_religious)
+            "Viewpoint" -> getString(R.string.map_category_viewpoint)
+            "Park & Garden" -> getString(R.string.map_category_park)
+            "Local Food" -> getString(R.string.map_category_food)
+            "Market" -> getString(R.string.map_category_market)
+            "Tourist Attraction" -> getString(R.string.map_category_tourist)
+            else -> englishCategory
+        }
+    }
+
+    private fun openLastCaptureDetail() {
+        val entry = lastCaptureEntry ?: return
+        val intent = Intent(requireContext(), LandmarkDetailActivity::class.java).apply {
+            putExtra("photo_uri", entry.optString("photo_uri", ""))
+            putExtra("server_id", entry.optLong("server_id", entry.optLong("id", -1L)))
+            putExtra("name", entry.optString("name", ""))
+            putExtra("location", entry.optString("location", ""))
+            putExtra("year_built", entry.optString("year_built", ""))
+            putExtra("status", entry.optString("status", ""))
+            putExtra("architect", entry.optString("architect", ""))
+            putExtra("capacity", entry.optString("capacity", ""))
+            putExtra("narrative_p1", entry.optString("narrative_p1", ""))
+            putExtra("narrative_quote", entry.optString("narrative_quote", ""))
+            putExtra("narrative_p2", entry.optString("narrative_p2", ""))
+            putExtra("nearby1_name", entry.optString("nearby1_name", ""))
+            putExtra("nearby1_category", entry.optString("nearby1_category", ""))
+            putExtra("nearby2_name", entry.optString("nearby2_name", ""))
+            putExtra("nearby2_category", entry.optString("nearby2_category", ""))
+            putExtra("nearby3_name", entry.optString("nearby3_name", ""))
+            putExtra("nearby3_category", entry.optString("nearby3_category", ""))
+            putExtra("from_home", true)
+            putExtra("rating", entry.optInt("rating", 0))
+            putExtra("language", entry.optString("language", "en"))
+        }
+        startActivity(intent)
+    }
+
+    private fun setupClickListeners() {
+        binding.cardLastCapture.setOnClickListener { openLastCaptureDetail() }
+        binding.btnViewDetails.setOnClickListener { openLastCaptureDetail() }
+
+        binding.btnSeeHistory.setOnClickListener {
+            // Navigate to Saved tab in MainActivity
+            (activity as? MainActivity)?.navigateToSaved()
         }
     }
 

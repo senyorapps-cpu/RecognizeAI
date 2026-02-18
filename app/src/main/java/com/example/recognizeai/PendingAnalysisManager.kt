@@ -133,6 +133,7 @@ class PendingAnalysisManager(private val context: Context) {
                         )
                         .addFormDataPart("user_id", session.userId.toString())
                         .addFormDataPart("device_id", session.deviceId)
+                        .addFormDataPart("language", session.language)
 
                     lat?.let { builder.addFormDataPart("latitude", it.toString()) }
                     lng?.let { builder.addFormDataPart("longitude", it.toString()) }
@@ -150,9 +151,23 @@ class PendingAnalysisManager(private val context: Context) {
                     }
 
                     val json = JSONObject(responseBody)
+                    val serverId = json.optLong("id", -1L)
+
+                    // Mark as saved on server
+                    if (serverId > 0) {
+                        try {
+                            val saveReq = Request.Builder()
+                                .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/save")
+                                .put("{}".toRequestBody("application/json".toMediaType()))
+                                .build()
+                            client.newCall(saveReq).execute().close()
+                        } catch (e: Exception) {
+                            Log.e("PendingManager", "Failed to mark as saved on server", e)
+                        }
+                    }
 
                     // Update the placeholder landmark in local storage with real data
-                    updatePlaceholder(photoUriStr, json, compressed?.second?.toString())
+                    updatePlaceholder(photoUriStr, json, compressed?.second?.toString(), session.language)
 
                     successCount++
                     Log.d("PendingManager", "Synced: ${json.optString("name")}")
@@ -173,7 +188,7 @@ class PendingAnalysisManager(private val context: Context) {
         }
     }
 
-    private fun updatePlaceholder(originalPhotoUri: String, json: JSONObject, compressedUri: String?) {
+    private fun updatePlaceholder(originalPhotoUri: String, json: JSONObject, compressedUri: String?, language: String) {
         val landmarksArr = JSONArray(prefs.getString("landmarks", "[]"))
         val updatedArr = JSONArray()
 
@@ -199,6 +214,7 @@ class PendingAnalysisManager(private val context: Context) {
                     put("nearby2_category", json.optString("nearby2_category", ""))
                     put("nearby3_name", json.optString("nearby3_name", ""))
                     put("nearby3_category", json.optString("nearby3_category", ""))
+                    put("language", language)
                     put("is_saved", true)
                     put("rating", obj.optInt("rating", 0))
                     put("created_at", obj.optString("created_at", ""))

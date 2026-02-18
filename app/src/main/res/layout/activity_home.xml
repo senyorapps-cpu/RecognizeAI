@@ -38,7 +38,7 @@
                         android:text="@string/explore_today"
                         android:textColor="@color/deep_blue"
                         android:textSize="28sp"
-                        android:fontFamily="@font/plus_jakarta_sans_bold"
+                        android:fontFamily="@font/inter_bold"
                         android:letterSpacing="-0.02" />
 
                     <TextView
@@ -48,7 +48,7 @@
                         android:text="@string/location_info"
                         android:textColor="@color/deep_blue_50"
                         android:textSize="14sp"
-                        android:fontFamily="@font/plus_jakarta_sans_medium" />
+                        android:fontFamily="@font/inter_medium" />
 
                 </LinearLayout>
 
@@ -115,7 +115,7 @@
                             android:text="@string/last_capture"
                             android:textColor="@color/deep_blue_50"
                             android:textSize="12sp"
-                            android:fontFamily="@font/plus_jakarta_sans_bold"
+                            android:fontFamily="@font/inter_bold"
                             android:textAllCaps="true"
                             android:letterSpacing="0.1" />
 
@@ -127,7 +127,7 @@
                             android:text="@string/the_colosseum"
                             android:textColor="@color/deep_blue"
                             android:textSize="20sp"
-                            android:fontFamily="@font/plus_jakarta_sans_bold"
+                            android:fontFamily="@font/inter_bold"
                             android:maxLines="2"
                             android:ellipsize="end" />
 
@@ -138,7 +138,7 @@
                             android:text="@string/tap_to_view"
                             android:textColor="@color/deep_blue_20"
                             android:textSize="12sp"
-                            android:fontFamily="@font/plus_jakarta_sans_medium" />
+                            android:fontFamily="@font/inter_medium" />
 
                     </LinearLayout>
 
@@ -175,7 +175,7 @@
                             android:text="@string/top_places"
                             android:textColor="@color/deep_blue"
                             android:textSize="18sp"
-                            android:fontFamily="@font/plus_jakarta_sans_bold" />
+                            android:fontFamily="@font/inter_bold" />
 
                         <TextView
                             android:id="@+id/btnViewAll"
@@ -184,7 +184,7 @@
                             android:text="@string/view_all"
                             android:textColor="@color/deep_blue_50"
                             android:textSize="14sp"
-                            android:fontFamily="@font/plus_jakarta_sans_semibold" />
+                            android:fontFamily="@font/inter_semibold" />
 
                     </LinearLayout>
 
@@ -249,7 +249,7 @@
                 android:text="@string/nav_home"
                 android:textColor="@color/deep_blue"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:textAllCaps="true" />
 
         </LinearLayout>
@@ -275,7 +275,7 @@
                 android:text="@string/nav_map"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:textAllCaps="true" />
 
         </LinearLayout>
@@ -330,7 +330,7 @@
                 android:text="@string/nav_saved"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:textAllCaps="true" />
 
         </LinearLayout>
@@ -356,7 +356,7 @@
                 android:text="@string/nav_profile"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="10sp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:textAllCaps="true" />
 
         </LinearLayout>

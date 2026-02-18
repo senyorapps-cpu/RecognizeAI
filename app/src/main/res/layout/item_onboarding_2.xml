@@ -132,7 +132,7 @@
                     android:text="@string/rome"
                     android:textColor="@color/deep_blue"
                     android:textSize="10sp"
-                    android:fontFamily="@font/plus_jakarta_sans_bold" />
+                    android:fontFamily="@font/inter_bold" />
 
             </LinearLayout>
 
@@ -177,35 +177,35 @@
 
             </LinearLayout>
 
-            <!-- AI Generated tag -->
+            <!-- Location tag -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
-                android:layout_marginTop="-16dp"
-                android:layout_marginStart="-16dp"
+                android:layout_marginTop="-12dp"
+                android:layout_marginStart="-12dp"
                 android:background="@drawable/bg_gold_tag"
                 android:elevation="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="6dp">
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@android:drawable/btn_star_big_on"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@android:drawable/ic_dialog_map"
                     android:tint="@color/deep_blue"
-                    android:contentDescription="AI" />
+                    android:contentDescription="Location" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:text="@string/ai_generated"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/paris"
                     android:textColor="@color/deep_blue"
-                    android:textSize="11sp"
-                    android:fontFamily="@font/plus_jakarta_sans_bold" />
+                    android:textSize="10sp"
+                    android:fontFamily="@font/inter_bold" />
 
             </LinearLayout>
 
@@ -301,7 +301,7 @@
             android:text="@string/onboarding_title_2"
             android:textColor="@color/deep_blue"
             android:textSize="36sp"
-            android:fontFamily="@font/plus_jakarta_sans_bold"
+            android:fontFamily="@font/inter_bold"
             android:gravity="center"
             android:letterSpacing="-0.02"
             android:lineSpacingMultiplier="1.1" />
@@ -313,7 +313,7 @@
             android:text="@string/onboarding_desc_2"
             android:textColor="@color/deep_blue_70"
             android:textSize="16sp"
-            android:fontFamily="@font/plus_jakarta_sans_medium"
+            android:fontFamily="@font/inter_medium"
             android:gravity="center"
             android:lineSpacingMultiplier="1.4" />
 
@@ -368,7 +368,7 @@
                     android:text="@string/next"
                     android:textColor="@color/deep_blue"
                     android:textSize="20sp"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:fontFamily="@font/inter_bold"
                     android:textAllCaps="true"
                     android:letterSpacing="0.05" />
 

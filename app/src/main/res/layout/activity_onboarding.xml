@@ -28,6 +28,19 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Language button -->
+    <ImageView
+        android:id="@+id/btnLanguage"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="start"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="20dp"
+        android:padding="8dp"
+        android:src="@drawable/ic_language"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/language_label" />
+
     <!-- Skip button -->
     <TextView
         android:id="@+id/btnSkip"
@@ -41,7 +54,7 @@
         android:text="@string/skip"
         android:textColor="@color/deep_blue"
         android:textSize="14sp"
-        android:fontFamily="@font/plus_jakarta_sans_bold"
+        android:fontFamily="@font/inter_bold"
         android:letterSpacing="0.15"
         android:textAllCaps="true" />
 

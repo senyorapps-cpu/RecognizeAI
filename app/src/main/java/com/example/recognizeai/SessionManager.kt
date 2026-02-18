@@ -22,8 +22,10 @@ class SessionManager(context: Context) {
         private const val KEY_EMAIL = "email"
         private const val KEY_PHOTO_URL = "photo_url"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
+        private const val KEY_LANGUAGE = "language"
+        private const val KEY_DARK_MODE = "dark_mode"
 
-        const val BASE_URL = "http://10.4.4.38:3001"
+        const val BASE_URL = "http://mnaks.online:3001"
     }
 
     fun saveUser(
@@ -50,10 +52,20 @@ class SessionManager(context: Context) {
     val email: String get() = prefs.getString(KEY_EMAIL, "") ?: ""
     val photoUrl: String get() = prefs.getString(KEY_PHOTO_URL, "") ?: ""
 
+    var language: String
+        get() = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
+        set(value) { prefs.edit().putString(KEY_LANGUAGE, value).commit() }
+
+    var isDarkMode: Boolean
+        get() = prefs.getBoolean(KEY_DARK_MODE, false)
+        set(value) { prefs.edit().putBoolean(KEY_DARK_MODE, value).apply() }
+
     val isGuest: Boolean get() = authType == "guest"
     val isGoogle: Boolean get() = authType == "google"
 
     fun logout() {
+        val savedLanguage = language
         prefs.edit().clear().apply()
+        this.language = savedLanguage
     }
 }

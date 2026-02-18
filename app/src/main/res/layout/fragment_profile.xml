@@ -14,11 +14,11 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/plus_jakarta_sans_bold"
+            android:fontFamily="@font/inter_bold"
             android:gravity="center"
             android:paddingTop="48dp"
             android:paddingBottom="8dp"
-            android:text="My Travel Hub"
+            android:text="@string/profile_title"
             android:textColor="@color/deep_blue"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -35,7 +35,7 @@
                 android:id="@+id/tvGreeting"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:fontFamily="@font/inter_bold"
                 android:text="Hello, Alex!"
                 android:textColor="@color/deep_blue"
                 android:textSize="24sp"
@@ -45,7 +45,7 @@
                 android:id="@+id/tvSubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/plus_jakarta_sans"
+                android:fontFamily="@font/inter"
                 android:text="Elite Explorer • Member since 2023"
                 android:textColor="@color/deep_blue_50"
                 android:textSize="13sp" />
@@ -57,33 +57,44 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:baselineAligned="false"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:paddingHorizontal="24dp">
 
             <!-- Card 1 - Total Snaps -->
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@drawable/bg_setting_item"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="14dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
-                    android:letterSpacing="0.15"
-                    android:text="TOTAL SNAPS"
+                    android:fontFamily="@font/inter_bold"
+                    android:letterSpacing="0.05"
+                    android:text="@string/profile_total_snaps"
                     android:textAllCaps="true"
                     android:textColor="@color/deep_blue_50"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="2"
+                    android:includeFontPadding="true" />
 
                 <TextView
                     android:id="@+id/tvTotalSnaps"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="@font/inter_bold"
                     android:text="0"
                     android:textColor="@color/gold_accent"
                     android:textSize="24sp"
@@ -94,29 +105,37 @@
             <!-- Card 2 - Countries -->
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_setting_item"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="14dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
-                    android:letterSpacing="0.15"
-                    android:text="COUNTRIES"
+                    android:fontFamily="@font/inter_bold"
+                    android:letterSpacing="0.05"
+                    android:text="@string/profile_countries"
                     android:textAllCaps="true"
                     android:textColor="@color/deep_blue_50"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="2"
+                    android:includeFontPadding="true" />
 
                 <TextView
                     android:id="@+id/tvCountries"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="@font/inter_bold"
                     android:text="0"
                     android:textColor="@color/gold_accent"
                     android:textSize="24sp"
@@ -127,29 +146,37 @@
             <!-- Card 3 - Journals -->
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_setting_item"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="14dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
-                    android:letterSpacing="0.15"
-                    android:text="JOURNALS"
+                    android:fontFamily="@font/inter_bold"
+                    android:letterSpacing="0.05"
+                    android:text="@string/profile_journals"
                     android:textAllCaps="true"
                     android:textColor="@color/deep_blue_50"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="2"
+                    android:includeFontPadding="true" />
 
                 <TextView
                     android:id="@+id/tvJournals"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="@font/inter_bold"
                     android:text="0"
                     android:textColor="@color/gold_accent"
                     android:textSize="24sp"
@@ -171,8 +198,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
-                android:text="Account Settings"
+                android:fontFamily="@font/inter_bold"
+                android:text="@string/profile_account_settings"
                 android:textColor="@color/deep_blue"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -207,16 +234,17 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:fontFamily="@font/plus_jakarta_sans_semibold"
-                    android:text="Language"
+                    android:fontFamily="@font/inter_semibold"
+                    android:text="@string/language_label"
                     android:textColor="@color/deep_blue"
                     android:textSize="15sp" />
 
                 <TextView
+                    android:id="@+id/tvLanguageValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
-                    android:fontFamily="@font/plus_jakarta_sans"
+                    android:fontFamily="@font/inter"
                     android:text="English"
                     android:textColor="@color/deep_blue_50"
                     android:textSize="13sp" />
@@ -259,8 +287,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:fontFamily="@font/plus_jakarta_sans_semibold"
-                    android:text="Subscription"
+                    android:fontFamily="@font/inter_semibold"
+                    android:text="@string/profile_subscription"
                     android:textColor="@color/deep_blue"
                     android:textSize="15sp" />
 
@@ -269,7 +297,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_pro_badge"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:fontFamily="@font/inter_bold"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
                     android:text="PRO"
@@ -315,8 +343,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:fontFamily="@font/plus_jakarta_sans_semibold"
-                    android:text="Privacy Policy"
+                    android:fontFamily="@font/inter_semibold"
+                    android:text="@string/privacy_policy"
                     android:textColor="@color/deep_blue"
                     android:textSize="15sp" />
 
@@ -358,15 +386,17 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:fontFamily="@font/plus_jakarta_sans_semibold"
-                    android:text="Appearance"
+                    android:fontFamily="@font/inter_semibold"
+                    android:text="@string/profile_appearance"
                     android:textColor="@color/deep_blue"
                     android:textSize="15sp" />
 
-                <View
-                    android:layout_width="40dp"
-                    android:layout_height="22dp"
-                    android:background="@drawable/bg_toggle_placeholder" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchDarkMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:focusable="false" />
 
             </LinearLayout>
 
@@ -384,8 +414,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:fontFamily="@font/plus_jakarta_sans_bold"
-                android:text="Support"
+                android:fontFamily="@font/inter_bold"
+                android:text="@string/profile_support"
                 android:textColor="@color/deep_blue"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -410,8 +440,8 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
-                    android:text="Need help with your snaps?"
+                    android:fontFamily="@font/inter_bold"
+                    android:text="@string/profile_support_title"
                     android:textColor="@color/deep_blue"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -420,8 +450,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:fontFamily="@font/plus_jakarta_sans"
-                    android:text="Our support team is available 24/7"
+                    android:fontFamily="@font/inter"
+                    android:text="@string/profile_support_desc"
                     android:textColor="@color/deep_blue_50"
                     android:textSize="12sp" />
 
@@ -431,10 +461,10 @@
                     android:layout_height="48dp"
                     android:layout_marginTop="16dp"
                     android:background="@drawable/bg_contact_button"
-                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:fontFamily="@font/inter_bold"
                     android:gravity="center"
                     android:paddingHorizontal="32dp"
-                    android:text="Contact Us"
+                    android:text="@string/profile_contact_us"
                     android:textColor="@color/white"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -444,7 +474,7 @@
         </LinearLayout>
 
         <!-- Logout button -->
-        <TextView
+        <LinearLayout
             android:id="@+id/btnLogout"
             android:layout_width="match_parent"
             android:layout_height="52dp"
@@ -452,14 +482,26 @@
             android:layout_marginTop="32dp"
             android:layout_marginBottom="120dp"
             android:background="@drawable/bg_logout_button"
-            android:drawablePadding="8dp"
-            android:drawableStart="@drawable/ic_logout"
-            android:fontFamily="@font/plus_jakarta_sans_bold"
             android:gravity="center"
-            android:text="Logout Account"
-            android:textColor="#FFEF4444"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginEnd="8dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_logout" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_bold"
+                android:text="@string/profile_logout"
+                android:textColor="@color/deep_blue"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

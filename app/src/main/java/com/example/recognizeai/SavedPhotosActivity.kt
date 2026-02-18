@@ -45,7 +45,8 @@ class SavedPhotosActivity : AppCompatActivity() {
         val nearby2Name: String,
         val nearby2Category: String,
         val nearby3Name: String,
-        val nearby3Category: String
+        val nearby3Category: String,
+        val language: String = "en"
     )
 
     private val takePicture = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -97,6 +98,7 @@ class SavedPhotosActivity : AppCompatActivity() {
                 putExtra("nearby2_category", item.nearby2Category)
                 putExtra("nearby3_name", item.nearby3Name)
                 putExtra("nearby3_category", item.nearby3Category)
+                putExtra("language", item.language)
             }
             startActivity(intent)
         }
@@ -131,7 +133,8 @@ class SavedPhotosActivity : AppCompatActivity() {
                     nearby2Name = obj.optString("nearby2_name"),
                     nearby2Category = obj.optString("nearby2_category"),
                     nearby3Name = obj.optString("nearby3_name"),
-                    nearby3Category = obj.optString("nearby3_category")
+                    nearby3Category = obj.optString("nearby3_category"),
+                    language = obj.optString("language", "en")
                 )
             )
         }
