@@ -35,6 +35,14 @@ app.use(cors({
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
+// Serve website for tripai.mnaks.online
+app.use((req, res, next) => {
+  if (req.hostname === "tripai.mnaks.online") {
+    return express.static(path.join(__dirname, "website"), { extensions: ["html"] })(req, res, next);
+  }
+  next();
+});
+
 // Global rate limiter — 100 requests per 15 min per IP
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
