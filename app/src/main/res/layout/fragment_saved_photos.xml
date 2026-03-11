@@ -13,7 +13,7 @@
         android:paddingTop="48dp"
         android:paddingBottom="16dp"
         android:paddingHorizontal="24dp"
-        android:background="#CCFFFFFF">
+        android:background="@color/surface_80">
 
         <!-- Title row -->
         <LinearLayout

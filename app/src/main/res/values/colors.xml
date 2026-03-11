@@ -21,4 +21,18 @@
     <color name="dark_background">#FF121212</color>
     <color name="dark_surface">#FF1E1E1E</color>
     <color name="dark_card">#FF2A2A2A</color>
+
+    <!-- Semantic colors (auto-switch via values-night) -->
+    <color name="surface">#FFFFFFFF</color>
+    <color name="surface_80">#CCFFFFFF</color>
+    <color name="surface_90">#E6FFFFFF</color>
+    <color name="surface_95">#F2FFFFFF</color>
+    <color name="background_secondary">#FFF9FAFB</color>
+    <color name="stroke_subtle">#FFF1F5F9</color>
+    <color name="stroke_glass">#40FFFFFF</color>
+    <color name="hero_background">#FF000000</color>
+    <color name="glass_beige">#CCF5F3EF</color>
+    <color name="drag_handle_color">#FFE2E8F0</color>
+    <color name="nearby_stroke">#FFF3F4F6</color>
+    <color name="toast_stroke">#33FFFFFF</color>
 </resources>

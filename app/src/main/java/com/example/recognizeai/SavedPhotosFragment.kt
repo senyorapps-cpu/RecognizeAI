@@ -155,8 +155,9 @@ class SavedPhotosFragment : Fragment() {
         if (item.serverId > 0) {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
+                    val sm = SessionManager(requireContext())
                     val request = Request.Builder()
-                        .url("${SessionManager.BASE_URL}/api/landmarks/${item.serverId}")
+                        .url("${SessionManager.BASE_URL}/api/landmarks/${item.serverId}?user_id=${sm.userId}&device_id=${sm.deviceId}")
                         .delete()
                         .build()
                     client.newCall(request).execute().close()

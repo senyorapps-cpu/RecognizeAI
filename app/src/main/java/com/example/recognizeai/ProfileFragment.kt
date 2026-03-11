@@ -93,7 +93,7 @@ class ProfileFragment : Fragment() {
                     val location = obj.optString("location", "")
                     val parts = location.split(",").map { it.trim() }
                     if (parts.size >= 2) countries.add(parts.last())
-                    if (obj.optBoolean("is_saved", false)) journalCount++
+                    if (obj.optInt("is_saved", 0) != 0) journalCount++
                 }
 
                 withContext(Dispatchers.Main) {
@@ -124,7 +124,7 @@ class ProfileFragment : Fragment() {
             val location = obj.optString("location", "")
             val parts = location.split(",").map { it.trim() }
             if (parts.size >= 2) countries.add(parts.last())
-            if (obj.optBoolean("is_saved", false)) journalCount++
+            if (obj.optInt("is_saved", 0) != 0) journalCount++
         }
 
         binding.tvTotalSnaps.text = totalSnaps.toString()

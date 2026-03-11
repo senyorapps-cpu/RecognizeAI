@@ -11,6 +11,7 @@ import com.example.recognizeai.databinding.ActivityOnboardingBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -30,6 +31,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Re-apply saved locale if lost (e.g. after reinstall) — may trigger recreation
         LocaleHelper.initFromSession(this)
 
         // Apply dark mode preference early (only if not already matching)
@@ -39,18 +41,26 @@ class OnboardingActivity : AppCompatActivity() {
             AppCompatDelegate.setDefaultNightMode(targetMode)
         }
 
-        // Apply saved language if AppCompatDelegate state was lost
-        val savedLang = session.language
-        if (savedLang != LocaleHelper.getCurrentLanguageCode()) {
-            LocaleHelper.setLocale(savedLang)
-            return
-        }
-
         // Skip onboarding + login if already logged in
         if (session.isLoggedIn) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
+        }
+
+        // On fresh install (SharedPreferences wiped), fetch language from server using device ID.
+        // The OS may persist a stale per-app locale from before uninstall, so always trust the server.
+        if (session.language == "en") {
+            CoroutineScope(Dispatchers.IO).launch {
+                val serverLang = LocaleHelper.fetchLanguageFromServer(session.deviceId)
+                if (serverLang != null && serverLang != LocaleHelper.getAppliedLanguageCode()) {
+                    withContext(Dispatchers.Main) {
+                        session.language = serverLang
+                        LocaleHelper.setLocale(serverLang)
+                        // setLocale triggers activity recreation with the correct locale
+                    }
+                }
+            }
         }
 
         binding = ActivityOnboardingBinding.inflate(layoutInflater)
@@ -99,14 +109,20 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun saveLanguageToServer(session: SessionManager, langCode: String) {
-        val uid = session.userId
-        if (uid <= 0) return
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val json = JSONObject().put("language", langCode)
+                    .put("device_id", session.deviceId)
                 val body = json.toString().toRequestBody("application/json".toMediaType())
+
+                val uid = session.userId
+                val url = if (uid > 0) {
+                    "${SessionManager.BASE_URL}/api/users/$uid/language"
+                } else {
+                    "${SessionManager.BASE_URL}/api/device/${session.deviceId}/language"
+                }
                 val request = Request.Builder()
-                    .url("${SessionManager.BASE_URL}/api/users/$uid/language")
+                    .url(url)
                     .put(body)
                     .build()
                 client.newCall(request).execute().close()

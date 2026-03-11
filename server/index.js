@@ -2,6 +2,8 @@ require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const multer = require("multer");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require("fs");
 const path = require("path");
@@ -12,8 +14,54 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
-app.use(express.json());
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false,  // Disabled for share page HTML
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS — restrict to known origins
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl)
+    if (!origin) return callback(null, true);
+    callback(null, true); // TODO: restrict to specific domains when frontend deployed
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// Body size limits
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ limit: "1mb", extended: true }));
+
+// Global rate limiter — 100 requests per 15 min per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+app.use("/api/", globalLimiter);
+
+// Strict rate limiter for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts, please try again later" },
+});
+
+// Strict rate limiter for analyze endpoint (AI calls are expensive)
+const analyzeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many analysis requests, please try again later" },
+});
 
 // ── Server start time & Admin auth ─────────────────────────────
 const SERVER_START_TIME = Date.now();
@@ -52,11 +100,25 @@ app.use((req, res, next) => {
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
+const ALLOWED_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, Date.now() + "-" + crypto.randomBytes(8).toString("hex") + ext);
+  },
 });
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },  // 10MB max
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIMES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files (JPEG, PNG, WebP, GIF) are allowed"));
+    }
+  },
+});
 
 // Gemini AI setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -68,6 +130,9 @@ const pool = new Pool({
   database: process.env.DB_NAME || "tripai",
   user: process.env.DB_USER || "tripai_user",
   password: process.env.DB_PASSWORD,
+  max: 20,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
 });
 
 pool.on("connect", () => {
@@ -488,10 +553,58 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "tripai-api", db: "postgresql" });
 });
 
+// ── Device language lookup (for restoring language after reinstall) ──
+app.get("/api/device/:deviceId/language", async (req, res) => {
+  try {
+    const deviceId = req.params.deviceId;
+    if (!deviceId) {
+      return res.status(400).json({ error: "device_id is required" });
+    }
+    const result = await pool.query(
+      "SELECT language FROM users WHERE device_id = $1 ORDER BY last_login_at DESC LIMIT 1",
+      [deviceId]
+    );
+    if (result.rows.length > 0 && result.rows[0].language) {
+      res.json({ language: result.rows[0].language });
+    } else {
+      res.json({ language: "en" });
+    }
+  } catch (error) {
+    console.error("Device language lookup error:", error);
+    res.json({ language: "en" });
+  }
+});
+
+// Save language by device ID (for pre-login language changes)
+app.put("/api/device/:deviceId/language", async (req, res) => {
+  try {
+    const deviceId = req.params.deviceId;
+    const { language } = req.body;
+    const LANGS = ["en", "ru", "es", "fr", "de", "pt"];
+    if (!deviceId || !language || !LANGS.includes(language)) {
+      return res.status(400).json({ error: "Invalid device_id or language" });
+    }
+    // Update language for the most recent user with this device_id
+    const result = await pool.query(
+      "UPDATE users SET language = $1 WHERE device_id = $2",
+      [language, deviceId]
+    );
+    if (result.rowCount > 0) {
+      res.json({ success: true });
+    } else {
+      // No user found with this device_id yet — that's OK, language will be set on login
+      res.json({ success: true, note: "no_user_yet" });
+    }
+  } catch (error) {
+    console.error("Device language save error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ── Auth endpoints ──────────────────────────────────────────────
 
 // Guest login — creates or finds guest user by device_id
-app.post("/api/auth/guest", async (req, res) => {
+app.post("/api/auth/guest", authLimiter, async (req, res) => {
   try {
     const { device_id, language } = req.body;
     console.log(`[GuestAuth] Login attempt with device_id: ${device_id}, language: ${language}`);
@@ -525,12 +638,12 @@ app.post("/api/auth/guest", async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Guest auth error:", error);
-    res.status(500).json({ error: "Authentication failed", message: error.message });
+    res.status(500).json({ error: "Authentication failed" });
   }
 });
 
 // Google login — creates or finds user by google_id
-app.post("/api/auth/google", async (req, res) => {
+app.post("/api/auth/google", authLimiter, async (req, res) => {
   try {
     const { google_id, email, display_name, photo_url, device_id, language } = req.body;
     if (!google_id) {
@@ -565,16 +678,17 @@ app.post("/api/auth/google", async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Google auth error:", error);
-    res.status(500).json({ error: "Authentication failed", message: error.message });
+    res.status(500).json({ error: "Authentication failed" });
   }
 });
 
 // Update user language
+const SUPPORTED_LANGUAGES = ["en", "ru", "es", "fr", "de", "pt"];
 app.put("/api/users/:id/language", async (req, res) => {
   try {
     const { language } = req.body;
-    if (!language) {
-      return res.status(400).json({ error: "language is required" });
+    if (!language || !SUPPORTED_LANGUAGES.includes(language)) {
+      return res.status(400).json({ error: "Unsupported language" });
     }
     const result = await pool.query(
       "UPDATE users SET language = $1 WHERE id = $2 RETURNING *",
@@ -586,7 +700,7 @@ app.put("/api/users/:id/language", async (req, res) => {
     console.log(`[Language] Updated user ${req.params.id} language to ${language}`);
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Failed to update language", message: error.message });
+    res.status(500).json({ error: "Failed to update language" });
   }
 });
 
@@ -599,7 +713,7 @@ app.get("/api/user/:id", async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch user", message: error.message });
+    res.status(500).json({ error: "Failed to fetch user" });
   }
 });
 
@@ -615,7 +729,7 @@ app.get("/api/privacy-policy", async (req, res) => {
     res.json(policies);
   } catch (error) {
     console.error("Privacy policy error:", error);
-    res.status(500).json({ error: "Failed to fetch privacy policy", message: error.message });
+    res.status(500).json({ error: "Failed to fetch privacy policy" });
   }
 });
 
@@ -631,7 +745,7 @@ const LANG_NAMES = {
   pt: "Portuguese",
 };
 
-app.post("/api/analyze", upload.single("image"), async (req, res) => {
+app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No image file provided" });
@@ -813,31 +927,51 @@ If you cannot identify a specific landmark, make your best guess based on the ar
     res.json({ id: insertResult.rows[0].id, latitude, longitude, language, ...parsed });
   } catch (error) {
     console.error("Analysis error:", error);
-    res.status(500).json({ error: "Analysis failed", message: error.message });
+    res.status(500).json({ error: "Analysis failed" });
   }
 });
+
+// Verify landmark ownership helper
+async function verifyLandmarkOwner(landmarkId, userId, deviceId) {
+  const result = await pool.query("SELECT user_id, device_id FROM landmarks WHERE id = $1", [landmarkId]);
+  if (result.rows.length === 0) return { found: false };
+  const row = result.rows[0];
+  const owned = (userId && row.user_id === parseInt(userId)) || (deviceId && row.device_id === deviceId);
+  return { found: true, owned };
+}
 
 // Update landmark rating
 app.put("/api/landmarks/:id/rating", async (req, res) => {
   try {
-    const { rating } = req.body;
-    if (rating === undefined || rating < 0 || rating > 5) {
-      return res.status(400).json({ error: "rating must be 0-5" });
+    const { rating, user_id, device_id } = req.body;
+    if (rating === undefined || !Number.isInteger(rating) || rating < 0 || rating > 5) {
+      return res.status(400).json({ error: "rating must be integer 0-5" });
     }
+    const ownership = await verifyLandmarkOwner(req.params.id, user_id, device_id);
+    if (!ownership.found) return res.status(404).json({ error: "Landmark not found" });
+    if (!ownership.owned) return res.status(403).json({ error: "Forbidden" });
+
     await pool.query("UPDATE landmarks SET rating = $1 WHERE id = $2", [rating, req.params.id]);
     res.json({ success: true, id: parseInt(req.params.id), rating });
   } catch (error) {
-    res.status(500).json({ error: "Failed to update rating", message: error.message });
+    console.error("Rating error:", error);
+    res.status(500).json({ error: "Failed to update rating" });
   }
 });
 
 // Save landmark to journal (is_saved = 1)
 app.put("/api/landmarks/:id/save", async (req, res) => {
   try {
+    const { user_id, device_id } = req.body;
+    const ownership = await verifyLandmarkOwner(req.params.id, user_id, device_id);
+    if (!ownership.found) return res.status(404).json({ error: "Landmark not found" });
+    if (!ownership.owned) return res.status(403).json({ error: "Forbidden" });
+
     await pool.query("UPDATE landmarks SET is_saved = 1 WHERE id = $1", [req.params.id]);
     res.json({ success: true, id: parseInt(req.params.id), is_saved: 1 });
   } catch (error) {
-    res.status(500).json({ error: "Failed to save landmark", message: error.message });
+    console.error("Save error:", error);
+    res.status(500).json({ error: "Failed to save landmark" });
   }
 });
 
@@ -845,18 +979,24 @@ app.put("/api/landmarks/:id/save", async (req, res) => {
 app.delete("/api/landmarks/:id", async (req, res) => {
   try {
     const id = req.params.id;
+    const userId = req.query.user_id || req.body?.user_id;
+    const deviceId = req.query.device_id || req.body?.device_id;
+
+    const ownership = await verifyLandmarkOwner(id, userId, deviceId);
+    if (!ownership.found) return res.status(404).json({ error: "Landmark not found" });
+    if (!ownership.owned) return res.status(403).json({ error: "Forbidden" });
+
     // Get image filename before deleting
     const landmark = await pool.query("SELECT image_filename FROM landmarks WHERE id = $1", [id]);
     if (landmark.rows.length > 0 && landmark.rows[0].image_filename) {
       const imgPath = path.join(uploadDir, landmark.rows[0].image_filename);
-      if (fs.existsSync(imgPath)) {
-        fs.unlinkSync(imgPath);
-      }
+      try { fs.unlinkSync(imgPath); } catch (e) { /* file may not exist */ }
     }
     await pool.query("DELETE FROM landmarks WHERE id = $1", [id]);
     res.json({ success: true, id: parseInt(id) });
   } catch (error) {
-    res.status(500).json({ error: "Failed to delete landmark", message: error.message });
+    console.error("Delete error:", error);
+    res.status(500).json({ error: "Failed to delete landmark" });
   }
 });
 
@@ -892,7 +1032,7 @@ app.get("/api/user/:id/landmarks", async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error(`[Landmarks] Error:`, error.message);
-    res.status(500).json({ error: "Failed to fetch landmarks", message: error.message });
+    res.status(500).json({ error: "Failed to fetch landmarks" });
   }
 });
 
@@ -918,7 +1058,7 @@ app.get("/api/landmarks/by-device", async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error(`[LandmarksByDevice] Error:`, error.message);
-    res.status(500).json({ error: "Failed to fetch landmarks", message: error.message });
+    res.status(500).json({ error: "Failed to fetch landmarks" });
   }
 });
 
@@ -971,27 +1111,50 @@ app.get("/api/landmarks/nearby", async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("Nearby landmarks error:", error);
-    res.status(500).json({ error: "Failed to fetch nearby landmarks", message: error.message });
+    res.status(500).json({ error: "Failed to fetch nearby landmarks" });
   }
 });
 
-// History endpoint — returns all saved landmarks, newest first
+// History endpoint — returns landmarks filtered by user
 app.get("/api/history", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM landmarks ORDER BY id DESC");
+    const userId = req.query.user_id ? parseInt(req.query.user_id) : null;
+    const deviceId = req.query.device_id || null;
+
+    if (!userId && !deviceId) {
+      return res.status(400).json({ error: "user_id or device_id is required" });
+    }
+
+    let sql, params;
+    if (userId && deviceId) {
+      sql = "SELECT * FROM landmarks WHERE (user_id = $1 OR device_id = $2) ORDER BY id DESC LIMIT 200";
+      params = [userId, deviceId];
+    } else if (userId) {
+      sql = "SELECT * FROM landmarks WHERE user_id = $1 ORDER BY id DESC LIMIT 200";
+      params = [userId];
+    } else {
+      sql = "SELECT * FROM landmarks WHERE device_id = $1 ORDER BY id DESC LIMIT 200";
+      params = [deviceId];
+    }
+
+    const result = await pool.query(sql, params);
     const rows = result.rows.map((row) => {
       row.image_url = `/api/uploads/${row.image_filename}`;
       return row;
     });
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch history", message: error.message });
+    console.error("History error:", error);
+    res.status(500).json({ error: "Failed to fetch history" });
   }
 });
 
 // ── Google Places API proxy ──────────────────────────────────────
 
-const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY || "AIzaSyDW_5xgz6Bf83iPIkxUoNZZtgQ0MgO6GYw";
+const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY;
+if (!GOOGLE_PLACES_KEY) {
+  console.warn("WARNING: GOOGLE_PLACES_KEY not set — /api/places/* endpoints will fail");
+}
 
 // Nearby tourist places — proxy Google Places Nearby Search (multiple types)
 app.get("/api/places/nearby", async (req, res) => {
@@ -1005,7 +1168,7 @@ app.get("/api/places/nearby", async (req, res) => {
       return res.status(400).json({ error: "lat and lng are required" });
     }
 
-    const fetch = (await import("node-fetch")).default;
+
 
     console.log(`[Places] Fetching nearby: lat=${lat}, lng=${lng}, radius=${radius}, language=${language}`);
 
@@ -1100,7 +1263,7 @@ app.get("/api/places/nearby", async (req, res) => {
     res.json(top);
   } catch (error) {
     console.error("Places nearby error:", error);
-    res.status(500).json({ error: "Failed to fetch nearby places", message: error.message });
+    res.status(500).json({ error: "Failed to fetch nearby places" });
   }
 });
 
@@ -1113,7 +1276,7 @@ app.get("/api/places/details", async (req, res) => {
       return res.status(400).json({ error: "place_id is required" });
     }
 
-    const fetch = (await import("node-fetch")).default;
+
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=editorial_summary,formatted_address&language=${language}&key=${GOOGLE_PLACES_KEY}`;
     const response = await fetch(url);
     const data = await response.json();
@@ -1140,7 +1303,7 @@ app.get("/api/places/photo", async (req, res) => {
     }
 
     const url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${photoRef}&key=${GOOGLE_PLACES_KEY}`;
-    const fetch = (await import("node-fetch")).default;
+
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -1149,8 +1312,8 @@ app.get("/api/places/photo", async (req, res) => {
 
     res.set("Content-Type", response.headers.get("content-type"));
     res.set("Cache-Control", "public, max-age=86400");
-    const buffer = await response.buffer();
-    res.send(buffer);
+    const arrayBuf = await response.arrayBuffer();
+    res.send(Buffer.from(arrayBuf));
   } catch (error) {
     console.error("Places photo error:", error);
     res.status(500).json({ error: "Failed to fetch place photo" });
@@ -1187,7 +1350,7 @@ app.post("/api/contact", upload.single("screenshot"), async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error("Contact error:", error);
-    res.status(500).json({ error: "Failed to send message", message: error.message });
+    res.status(500).json({ error: "Failed to send message" });
   }
 });
 
@@ -1219,10 +1382,11 @@ app.get("/share/:id", async (req, res) => {
       { name: escapeHtml(lm.nearby3_name || ""), cat: escapeHtml(lm.nearby3_category || "") },
     ].filter(n => n.name);
     const rating = Math.max(0, Math.min(5, parseInt(lm.rating) || 0));
+    const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
     const imageUrl = lm.image_filename
-      ? `http://mnaks.online:3001/api/uploads/${lm.image_filename}`
+      ? `${baseUrl}/api/uploads/${lm.image_filename}`
       : "";
-    const shareUrl = `http://mnaks.online:3001/share/${lm.id}`;
+    const shareUrl = `${baseUrl}/share/${lm.id}`;
     const description = quote || location || "Discovered with TravelAI";
 
     // Star HTML
@@ -1349,14 +1513,24 @@ function adminAuth(req, res, next) {
   next();
 }
 
-// Admin login
-app.post("/api/admin/login", (req, res) => {
+// Admin login (rate-limited + timing-safe comparison)
+app.post("/api/admin/login", authLimiter, (req, res) => {
   const { password } = req.body;
-  if (password !== process.env.ADMIN_PASSWORD) {
+  if (!password) {
+    return res.status(400).json({ error: "Password required" });
+  }
+  const expected = process.env.ADMIN_PASSWORD || "";
+  // Timing-safe comparison to prevent timing attacks
+  const a = Buffer.from(password.padEnd(256, "\0"));
+  const b = Buffer.from(expected.padEnd(256, "\0"));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    console.warn(`[Security] Failed admin login attempt from IP`);
     return res.status(401).json({ error: "Invalid password" });
   }
   const token = crypto.randomUUID();
   adminTokens.add(token);
+  // Token expires after 4 hours
+  setTimeout(() => adminTokens.delete(token), 4 * 60 * 60 * 1000);
   res.json({ token });
 });
 
@@ -1461,8 +1635,9 @@ app.get("/api/admin/server", adminAuth, async (req, res) => {
 // Admin users list
 app.get("/api/admin/users", adminAuth, async (req, res) => {
   try {
-    const { search, auth_type, page = 1, limit = 50 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { search, auth_type, page = 1, limit: rawLimit = 50 } = req.query;
+    const limit = Math.min(Math.max(1, parseInt(rawLimit) || 50), 100);
+    const offset = (Math.max(1, parseInt(page) || 1) - 1) * limit;
     let where = [];
     let params = [];
     let idx = 1;
@@ -1482,7 +1657,7 @@ app.get("/api/admin/users", adminAuth, async (req, res) => {
     const countResult = await pool.query(`SELECT COUNT(*) FROM users ${whereClause}`, params);
     const total = parseInt(countResult.rows[0].count);
 
-    params.push(parseInt(limit));
+    params.push(limit);
     params.push(offset);
     const result = await pool.query(
       `SELECT u.*, (SELECT COUNT(*) FROM landmarks l WHERE l.user_id = u.id) AS landmarks_count
@@ -1491,7 +1666,7 @@ app.get("/api/admin/users", adminAuth, async (req, res) => {
       params
     );
 
-    res.json({ users: result.rows, total, page: parseInt(page), limit: parseInt(limit) });
+    res.json({ users: result.rows, total, page: Math.max(1, parseInt(page) || 1), limit });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1533,8 +1708,9 @@ app.delete("/api/admin/users/:id", adminAuth, async (req, res) => {
 // Admin landmarks list
 app.get("/api/admin/landmarks", adminAuth, async (req, res) => {
   try {
-    const { search, user_id, language, saved, page = 1, limit = 50 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { search, user_id, language, saved, page = 1, limit: rawLimit = 50 } = req.query;
+    const limit = Math.min(Math.max(1, parseInt(rawLimit) || 50), 100);
+    const offset = (Math.max(1, parseInt(page) || 1) - 1) * limit;
     let where = [];
     let params = [];
     let idx = 1;
@@ -1564,7 +1740,7 @@ app.get("/api/admin/landmarks", adminAuth, async (req, res) => {
     const countResult = await pool.query(`SELECT COUNT(*) FROM landmarks l ${whereClause}`, params);
     const total = parseInt(countResult.rows[0].count);
 
-    params.push(parseInt(limit));
+    params.push(limit);
     params.push(offset);
     const result = await pool.query(
       `SELECT l.*, u.display_name AS user_name
@@ -1593,7 +1769,7 @@ app.get("/api/admin/landmarks", adminAuth, async (req, res) => {
       return row;
     });
 
-    res.json({ landmarks, total, page: parseInt(page), limit: parseInt(limit) });
+    res.json({ landmarks, total, page: Math.max(1, parseInt(page) || 1), limit });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

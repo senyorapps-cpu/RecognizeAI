@@ -98,14 +98,20 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun saveLanguageToServer(langCode: String) {
-        val uid = session.userId
-        if (uid <= 0) return
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val json = JSONObject().put("language", langCode)
+                    .put("device_id", session.deviceId)
                 val body = json.toString().toRequestBody("application/json".toMediaType())
+
+                val uid = session.userId
+                val url = if (uid > 0) {
+                    "${SessionManager.BASE_URL}/api/users/$uid/language"
+                } else {
+                    "${SessionManager.BASE_URL}/api/device/${session.deviceId}/language"
+                }
                 val request = Request.Builder()
-                    .url("${SessionManager.BASE_URL}/api/users/$uid/language")
+                    .url(url)
                     .put(body)
                     .build()
                 client.newCall(request).execute().close()
@@ -157,6 +163,9 @@ class LoginActivity : AppCompatActivity() {
                     if (serverLang.isNotEmpty() && serverLang != LocaleHelper.getCurrentLanguageCode()) {
                         session.language = serverLang
                         LocaleHelper.setLocale(serverLang)
+                        // setLocale triggers activity recreation — don't navigate yet,
+                        // the recreated LoginActivity will see isLoggedIn=true and go to Home
+                        return@withContext
                     }
                     navigateToHome()
                 }
@@ -214,6 +223,7 @@ class LoginActivity : AppCompatActivity() {
                     if (serverLang.isNotEmpty() && serverLang != LocaleHelper.getCurrentLanguageCode()) {
                         session.language = serverLang
                         LocaleHelper.setLocale(serverLang)
+                        return@withContext
                     }
                     navigateToHome()
                 }

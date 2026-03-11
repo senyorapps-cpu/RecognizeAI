@@ -70,6 +70,7 @@ class LandmarkDetailActivity : AppCompatActivity() {
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
     private var isSpeaking = false
+    private var pendingPlay = false
 
     private val takePictureLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -165,15 +166,24 @@ class LandmarkDetailActivity : AppCompatActivity() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     // Mark as saved
+                    val sm = SessionManager(this@LandmarkDetailActivity)
+                    val saveJson = JSONObject().apply {
+                        put("user_id", sm.userId)
+                        put("device_id", sm.deviceId)
+                    }
                     val saveReq = Request.Builder()
                         .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/save")
-                        .put("{}".toRequestBody("application/json".toMediaType()))
+                        .put(saveJson.toString().toRequestBody("application/json".toMediaType()))
                         .build()
                     httpClient.newCall(saveReq).execute().close()
 
                     // Also sync rating
                     if (currentRating > 0) {
-                        val ratingJson = JSONObject().apply { put("rating", currentRating) }
+                        val ratingJson = JSONObject().apply {
+                            put("rating", currentRating)
+                            put("user_id", sm.userId)
+                            put("device_id", sm.deviceId)
+                        }
                         val ratingReq = Request.Builder()
                             .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/rating")
                             .put(ratingJson.toString().toRequestBody("application/json".toMediaType()))
@@ -248,7 +258,12 @@ class LandmarkDetailActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val json = JSONObject().apply { put("rating", currentRating) }
+                val sm = SessionManager(this@LandmarkDetailActivity)
+                val json = JSONObject().apply {
+                    put("rating", currentRating)
+                    put("user_id", sm.userId)
+                    put("device_id", sm.deviceId)
+                }
                 val request = Request.Builder()
                     .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/rating")
                     .put(json.toString().toRequestBody("application/json".toMediaType()))
@@ -470,6 +485,10 @@ class LandmarkDetailActivity : AppCompatActivity() {
                     else -> Locale.US
                 }
                 tts?.language = locale
+                if (pendingPlay) {
+                    pendingPlay = false
+                    runOnUiThread { startSpeaking() }
+                }
             }
         }
 
@@ -491,31 +510,30 @@ class LandmarkDetailActivity : AppCompatActivity() {
         })
 
         binding.btnPlayAudio.setOnClickListener {
-            if (!isTtsReady) {
-                Toast.makeText(this, "Audio not ready yet", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
             if (isSpeaking) {
                 tts?.stop()
                 isSpeaking = false
                 binding.imgPlayIcon.setImageResource(R.drawable.ic_play)
+            } else if (isTtsReady) {
+                startSpeaking()
             } else {
-                val name = intent.getStringExtra("name") ?: ""
-                val p1 = intent.getStringExtra("narrative_p1") ?: ""
-                val quote = intent.getStringExtra("narrative_quote") ?: ""
-                val p2 = intent.getStringExtra("narrative_p2") ?: ""
-                val fullText = "$name. $p1 $quote $p2"
-
-                if (fullText.isBlank()) return@setOnClickListener
-
-                val params = Bundle()
-                params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "landmark_tts")
-                tts?.speak(fullText, TextToSpeech.QUEUE_FLUSH, params, "landmark_tts")
-                isSpeaking = true
-                binding.imgPlayIcon.setImageResource(R.drawable.ic_pause)
+                pendingPlay = true
             }
         }
+    }
+
+    private fun startSpeaking() {
+        val name = intent.getStringExtra("name") ?: ""
+        val p1 = intent.getStringExtra("narrative_p1") ?: ""
+        val quote = intent.getStringExtra("narrative_quote") ?: ""
+        val p2 = intent.getStringExtra("narrative_p2") ?: ""
+        val fullText = "$name. $p1 $quote $p2"
+        if (fullText.isBlank()) return
+        val params = Bundle()
+        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "landmark_tts")
+        tts?.speak(fullText, TextToSpeech.QUEUE_FLUSH, params, "landmark_tts")
+        isSpeaking = true
+        binding.imgPlayIcon.setImageResource(R.drawable.ic_pause)
     }
 
     override fun onDestroy() {

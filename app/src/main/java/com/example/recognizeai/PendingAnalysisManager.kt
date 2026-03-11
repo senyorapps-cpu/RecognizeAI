@@ -156,9 +156,13 @@ class PendingAnalysisManager(private val context: Context) {
                     // Mark as saved on server
                     if (serverId > 0) {
                         try {
+                            val saveBody = JSONObject().apply {
+                                put("user_id", session.userId)
+                                put("device_id", session.deviceId)
+                            }
                             val saveReq = Request.Builder()
                                 .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/save")
-                                .put("{}".toRequestBody("application/json".toMediaType()))
+                                .put(saveBody.toString().toRequestBody("application/json".toMediaType()))
                                 .build()
                             client.newCall(saveReq).execute().close()
                         } catch (e: Exception) {

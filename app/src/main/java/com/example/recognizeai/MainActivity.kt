@@ -66,13 +66,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Re-apply saved locale if lost (e.g. after reinstall) — may trigger recreation
         LocaleHelper.initFromSession(this)
+
         // Apply dark mode preference (only if not already matching to avoid recreation loop)
         val session = SessionManager(this)
         val targetMode = if (session.isDarkMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
         if (AppCompatDelegate.getDefaultNightMode() != targetMode) {
             AppCompatDelegate.setDefaultNightMode(targetMode)
         }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
