@@ -101,6 +101,7 @@ class LandmarkDetailActivity : AppCompatActivity() {
         setupClickListeners()
         setupStarRating()
         setupTextToSpeech()
+        applyPlanRestrictions()
 
         // Hide bottom action bar when opened from saved page or home last capture
         val fromSaved = intent.getBooleanExtra("from_saved", false)
@@ -536,6 +537,22 @@ class LandmarkDetailActivity : AppCompatActivity() {
         binding.imgPlayIcon.setImageResource(R.drawable.ic_pause)
     }
 
+    private fun applyPlanRestrictions() {
+        val session = SessionManager(this)
+        if (!session.isPlus) {
+            // Lock audio narration
+            binding.btnPlayAudio.alpha = 0.55f
+            binding.imgPlayIcon.setImageResource(R.drawable.ic_lock)
+            binding.btnPlayAudio.setOnClickListener {
+                startActivity(Intent(this, SubscriptionActivity::class.java))
+            }
+            // Lock share card
+            binding.btnShare.setOnClickListener {
+                startActivity(Intent(this, SubscriptionActivity::class.java))
+            }
+        }
+    }
+
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
@@ -562,6 +579,19 @@ class LandmarkDetailActivity : AppCompatActivity() {
         }
 
         binding.btnSaveJournal.setOnClickListener {
+            val session = SessionManager(this)
+            if (session.isFree) {
+                val prefs = getSharedPreferences("recognizeai_landmarks", MODE_PRIVATE)
+                val arr = JSONArray(prefs.getString("landmarks", "[]"))
+                var savedCount = 0
+                for (i in 0 until arr.length()) {
+                    if (arr.getJSONObject(i).optInt("is_saved", 0) != 0) savedCount++
+                }
+                if (savedCount >= session.maxJournalEntries) {
+                    startActivity(Intent(this, SubscriptionActivity::class.java))
+                    return@setOnClickListener
+                }
+            }
             saveToJournal()
             Toast.makeText(this, "Saved to Journal", Toast.LENGTH_SHORT).show()
             val intent = Intent(this, MainActivity::class.java)

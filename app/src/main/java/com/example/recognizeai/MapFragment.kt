@@ -460,9 +460,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
                 if (response.isSuccessful) {
                     val arr = JSONArray(body)
+                    val pinLimit = if (session.isPlus) arr.length() else minOf(arr.length(), 20)
                     withContext(Dispatchers.Main) {
                         val goldIcon = BitmapDescriptorFactory.fromBitmap(createMarkerIcon(0xFFDFC623.toInt()))
-                        for (i in 0 until arr.length()) {
+                        for (i in 0 until pinLimit) {
                             val obj = arr.getJSONObject(i)
                             obj.put("_source", "our_landmark")
                             val markerLat = obj.optDouble("latitude", Double.NaN)

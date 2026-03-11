@@ -237,6 +237,11 @@ async function initDb() {
       await seedPrivacyPolicies(client);
     }
 
+    // Add subscription plan columns
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT 'free'`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_scans INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS scan_date DATE`);
+
     // Create indexes
     await client.query(`CREATE INDEX IF NOT EXISTS idx_landmarks_user_id ON landmarks(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_device_id ON users(device_id)`);
@@ -769,6 +774,69 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
 
     console.log(`[Analyze] Language requested: ${language} (${langName})`);
 
+    // ── Scan limit enforcement ──────────────────────────────────
+    const PLAN_LIMITS = { free: 5, plus: 50, pro: 200 };
+    const rawUserId = req.body?.user_id || null;
+    const rawDeviceId = req.body?.device_id || null;
+    let limitUserId = rawUserId ? parseInt(rawUserId) : null;
+    let userPlan = "free";
+    let scansToday = 0;
+
+    if (limitUserId) {
+      const uRes = await pool.query(
+        "SELECT id, plan, daily_scans, scan_date FROM users WHERE id = $1", [limitUserId]
+      );
+      if (uRes.rows.length > 0) {
+        const u = uRes.rows[0];
+        userPlan = u.plan || "free";
+        const today = new Date().toISOString().split("T")[0];
+        const savedDate = u.scan_date ? u.scan_date.toISOString().split("T")[0] : null;
+        scansToday = savedDate === today ? u.daily_scans : 0;
+        const limit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+        if (scansToday >= limit) {
+          fs.unlinkSync(filePath);
+          return res.status(429).json({
+            error: "scan_limit_reached",
+            message: `Daily limit of ${limit} scans reached for your ${userPlan} plan.`,
+            plan: userPlan, scans_today: scansToday, scan_limit: limit,
+          });
+        }
+        if (savedDate === today) {
+          await pool.query("UPDATE users SET daily_scans = daily_scans + 1 WHERE id = $1", [limitUserId]);
+        } else {
+          await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE WHERE id = $1", [limitUserId]);
+        }
+        scansToday++;
+      }
+    } else if (rawDeviceId) {
+      const uRes = await pool.query(
+        "SELECT id, plan, daily_scans, scan_date FROM users WHERE device_id = $1 ORDER BY id DESC LIMIT 1", [rawDeviceId]
+      );
+      if (uRes.rows.length > 0) {
+        const u = uRes.rows[0];
+        userPlan = u.plan || "free";
+        const today = new Date().toISOString().split("T")[0];
+        const savedDate = u.scan_date ? u.scan_date.toISOString().split("T")[0] : null;
+        scansToday = savedDate === today ? u.daily_scans : 0;
+        const limit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+        if (scansToday >= limit) {
+          fs.unlinkSync(filePath);
+          return res.status(429).json({
+            error: "scan_limit_reached",
+            message: `Daily limit of ${limit} scans reached for your ${userPlan} plan.`,
+            plan: userPlan, scans_today: scansToday, scan_limit: limit,
+          });
+        }
+        if (savedDate === today) {
+          await pool.query("UPDATE users SET daily_scans = daily_scans + 1 WHERE id = $1", [u.id]);
+        } else {
+          await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE WHERE id = $1", [u.id]);
+        }
+        scansToday++;
+      }
+    }
+    // ────────────────────────────────────────────────────────────
+
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
     });
@@ -932,7 +1000,12 @@ If you cannot identify a specific landmark, make your best guess based on the ar
       ]
     );
 
-    res.json({ id: insertResult.rows[0].id, latitude, longitude, language, ...parsed });
+    res.json({
+      id: insertResult.rows[0].id, latitude, longitude, language, ...parsed,
+      plan: userPlan,
+      scans_today: scansToday,
+      scan_limit: PLAN_LIMITS[userPlan] || PLAN_LIMITS.free,
+    });
   } catch (error) {
     console.error("Analysis error:", error);
     res.status(500).json({ error: "Analysis failed" });

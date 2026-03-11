@@ -160,6 +160,7 @@ class LoginActivity : AppCompatActivity() {
                         authType = "guest",
                         displayName = user.optString("display_name", "Guest")
                     )
+                    session.plan = user.optString("plan", "free")
                     if (serverLang.isNotEmpty() && serverLang != LocaleHelper.getCurrentLanguageCode()) {
                         session.language = serverLang
                         LocaleHelper.setLocale(serverLang)
@@ -220,6 +221,7 @@ class LoginActivity : AppCompatActivity() {
                         email = user.optString("email", email),
                         photoUrl = user.optString("photo_url", photoUrl)
                     )
+                    session.plan = user.optString("plan", "free")
                     if (serverLang.isNotEmpty() && serverLang != LocaleHelper.getCurrentLanguageCode()) {
                         session.language = serverLang
                         LocaleHelper.setLocale(serverLang)

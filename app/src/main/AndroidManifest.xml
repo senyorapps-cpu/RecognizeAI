@@ -50,6 +50,7 @@
         <activity android:name=".SavedPhotosActivity" />
         <activity android:name=".PrivacyPolicyActivity" />
         <activity android:name=".ContactUsActivity" />
+        <activity android:name=".SubscriptionActivity" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

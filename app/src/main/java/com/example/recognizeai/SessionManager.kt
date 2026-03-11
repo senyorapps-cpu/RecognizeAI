@@ -24,6 +24,9 @@ class SessionManager(context: Context) {
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_DARK_MODE = "dark_mode"
+        private const val KEY_PLAN = "plan"
+        private const val KEY_SCANS_TODAY = "scans_today"
+        private const val KEY_SCAN_DATE = "scan_date"
 
         const val BASE_URL = "http://mnaks.online:3001"
     }
@@ -62,6 +65,56 @@ class SessionManager(context: Context) {
 
     val isGuest: Boolean get() = authType == "guest"
     val isGoogle: Boolean get() = authType == "google"
+
+    // ── Subscription plan ──────────────────────────────────────
+    var plan: String
+        get() = prefs.getString(KEY_PLAN, "free") ?: "free"
+        set(value) { prefs.edit().putString(KEY_PLAN, value).apply() }
+
+    val isPlus: Boolean get() = plan == "plus" || plan == "pro"
+    val isPro: Boolean get() = plan == "pro"
+    val isFree: Boolean get() = plan == "free"
+
+    val planDisplayName: String get() = when (plan) {
+        "plus" -> "Traveler"
+        "pro" -> "Globetrotter"
+        else -> "Explorer"
+    }
+
+    val scanLimit: Int get() = when (plan) {
+        "plus" -> 50
+        "pro" -> 200
+        else -> 5
+    }
+
+    val maxPendingQueue: Int get() = when (plan) {
+        "plus" -> 20
+        "pro" -> Int.MAX_VALUE
+        else -> 3
+    }
+
+    val maxJournalEntries: Int get() = when (plan) {
+        "plus", "pro" -> Int.MAX_VALUE
+        else -> 20
+    }
+
+    // Daily scan counter — resets automatically on a new calendar day
+    var scansToday: Int
+        get() {
+            val today = java.time.LocalDate.now().toString()
+            val savedDate = prefs.getString(KEY_SCAN_DATE, "") ?: ""
+            return if (savedDate == today) prefs.getInt(KEY_SCANS_TODAY, 0) else 0
+        }
+        set(value) {
+            val today = java.time.LocalDate.now().toString()
+            prefs.edit()
+                .putInt(KEY_SCANS_TODAY, value)
+                .putString(KEY_SCAN_DATE, today)
+                .apply()
+        }
+
+    fun incrementScansToday() { scansToday = scansToday + 1 }
+    // ───────────────────────────────────────────────────────────
 
     fun logout() {
         val savedLanguage = language

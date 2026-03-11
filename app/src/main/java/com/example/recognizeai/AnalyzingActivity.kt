@@ -99,7 +99,12 @@ class AnalyzingActivity : AppCompatActivity() {
 
         val photoUriString = intent.getStringExtra("photo_uri")
         if (photoUriString != null) {
-            analyzeWithServer(Uri.parse(photoUriString))
+            val session = SessionManager(this)
+            if (session.scansToday >= session.scanLimit) {
+                showScanLimitDialog(session)
+            } else {
+                analyzeWithServer(Uri.parse(photoUriString))
+            }
         } else {
             apiFinished = true
         }
@@ -411,9 +416,14 @@ class AnalyzingActivity : AppCompatActivity() {
                     Log.d("AnalyzingActivity", "Server response: $responseBody")
 
                     if (!response.isSuccessful) {
-                        // Parse server error for user-friendly message
                         val errorMsg = try {
                             val errJson = JSONObject(responseBody)
+                            if (errJson.optString("error") == "scan_limit_reached") {
+                                withContext(Dispatchers.Main) {
+                                    showScanLimitDialog(SessionManager(this@AnalyzingActivity))
+                                }
+                                return@withTimeoutOrNull null
+                            }
                             errJson.optString("message", "Server error: ${response.code}")
                         } catch (_: Exception) {
                             "Server error: ${response.code}"
@@ -435,6 +445,12 @@ class AnalyzingActivity : AppCompatActivity() {
                 }
 
                 withContext(Dispatchers.Main) {
+                    // Update local scan count from server response
+                    val newScansToday = json.optInt("scans_today", -1)
+                    val sm = SessionManager(this@AnalyzingActivity)
+                    if (newScansToday >= 0) sm.scansToday = newScansToday else sm.incrementScansToday()
+                    sm.plan = json.optString("plan", sm.plan)
+
                     apiResult = Intent(this@AnalyzingActivity, LandmarkDetailActivity::class.java).apply {
                         putExtra("photo_uri", displayUri.toString())
                         putExtra("server_id", json.optLong("id", -1L))
@@ -495,9 +511,16 @@ class AnalyzingActivity : AppCompatActivity() {
                 Log.e("AnalyzingActivity", "Server API error", e)
                 withContext(Dispatchers.Main) {
                     if (!NetworkUtils.isOnline(this@AnalyzingActivity)) {
-                        // Offline — save photo to pending queue
                         val originalUri = intent.getStringExtra("photo_uri") ?: ""
                         val pendingManager = PendingAnalysisManager(this@AnalyzingActivity)
+                        val sessionForQueue = SessionManager(this@AnalyzingActivity)
+                        if (pendingManager.getPendingCount() >= sessionForQueue.maxPendingQueue) {
+                            percentAnimator?.cancel()
+                            waitingAnimator?.cancel()
+                            hasNavigated = true
+                            showQueueLimitDialog(sessionForQueue)
+                            return@withContext
+                        }
                         pendingManager.addToPendingQueue(
                             photoUri = originalUri,
                             lat = currentLatitude,
@@ -571,6 +594,60 @@ class AnalyzingActivity : AppCompatActivity() {
             animator.interpolator = LinearInterpolator()
             animator.start()
         }
+    }
+
+    private fun showScanLimitDialog(session: SessionManager) {
+        percentAnimator?.cancel()
+        waitingAnimator?.cancel()
+        hasNavigated = true
+
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_scan_limit)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(false)
+
+        dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
+            "You've used all ${session.scanLimit} daily scans on the ${session.planDisplayName} plan."
+
+        dialog.findViewById<TextView>(R.id.btnUpgrade).setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+            finish()
+        }
+        dialog.findViewById<TextView>(R.id.btnDismiss).setOnClickListener {
+            dialog.dismiss()
+            finish()
+        }
+        dialog.show()
+    }
+
+    private fun showQueueLimitDialog(session: SessionManager) {
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_scan_limit)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(false)
+
+        dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
+            "Offline queue is full (${session.maxPendingQueue} photos max on the ${session.planDisplayName} plan)."
+
+        dialog.findViewById<TextView>(R.id.btnUpgrade).setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+            finish()
+        }
+        dialog.findViewById<TextView>(R.id.btnDismiss).setOnClickListener {
+            dialog.dismiss()
+            finish()
+        }
+        dialog.show()
     }
 
     private fun setupClickListeners() {

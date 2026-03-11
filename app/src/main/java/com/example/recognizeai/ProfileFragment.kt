@@ -64,6 +64,11 @@ class ProfileFragment : Fragment() {
             binding.tvGreeting.text = getString(R.string.profile_hello_guest)
             binding.tvSubtitle.text = getString(R.string.profile_subtitle_guest)
         }
+        binding.tvPlanBadge.text = when (session.plan) {
+            "plus" -> "✦ Traveler"
+            "pro"  -> "✦ Globetrotter"
+            else   -> "Explorer"
+        }
     }
 
     private fun loadStats() {
@@ -174,7 +179,7 @@ class ProfileFragment : Fragment() {
         }
 
         binding.settingSubscription.setOnClickListener {
-            Toast.makeText(requireContext(), "Coming soon", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
         }
 
         binding.settingPrivacy.setOnClickListener {
