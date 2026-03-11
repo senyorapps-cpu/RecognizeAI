@@ -196,9 +196,9 @@ class SavedPhotosFragment : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val url = if (userId > 0) {
-                    "${SessionManager.BASE_URL}/api/user/$userId/landmarks?device_id=$deviceId&saved=true"
+                    "${SessionManager.BASE_URL}/api/user/$userId/landmarks?device_id=$deviceId"
                 } else {
-                    "${SessionManager.BASE_URL}/api/landmarks/by-device?device_id=$deviceId&saved=true"
+                    "${SessionManager.BASE_URL}/api/landmarks/by-device?device_id=$deviceId"
                 }
                 Log.d("SavedPhotos", "Loading from server: $url")
                 val request = Request.Builder()
