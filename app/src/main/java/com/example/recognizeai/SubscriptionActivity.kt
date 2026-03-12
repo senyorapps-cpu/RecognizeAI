@@ -1,14 +1,42 @@
 package com.example.recognizeai
 
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.android.billingclient.api.*
 import com.example.recognizeai.databinding.ActivitySubscriptionBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
-class SubscriptionActivity : AppCompatActivity() {
+class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     private lateinit var binding: ActivitySubscriptionBinding
     private lateinit var session: SessionManager
+    private lateinit var billingClient: BillingClient
+
+    private var plusProductDetails: ProductDetails? = null
+    private var proProductDetails: ProductDetails? = null
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    companion object {
+        const val PRODUCT_TRAVELER = "plan_traveler_monthly"
+        const val PRODUCT_GLOBETROTTER = "plan_globetrotter_monthly"
+        private const val TAG = "SubscriptionActivity"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,13 +47,14 @@ class SubscriptionActivity : AppCompatActivity() {
 
         updateCurrentPlanIndicators()
         setupClickListeners()
+        setupBillingClient()
     }
 
     private fun updateCurrentPlanIndicators() {
         when (session.plan) {
-            "plus" -> binding.tvPlusCurrent.visibility = android.view.View.VISIBLE
-            "pro"  -> binding.tvProCurrent.visibility = android.view.View.VISIBLE
-            else   -> binding.tvFreeCurrent.visibility = android.view.View.VISIBLE
+            "plus" -> binding.tvPlusCurrent.visibility = View.VISIBLE
+            "pro"  -> binding.tvProCurrent.visibility = View.VISIBLE
+            else   -> binding.tvFreeCurrent.visibility = View.VISIBLE
         }
     }
 
@@ -33,27 +62,199 @@ class SubscriptionActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener { finish() }
 
         binding.btnUpgradePlus.setOnClickListener {
-            if (session.plan == "plus") {
-                Toast.makeText(this, "You are already on the Traveler plan.", Toast.LENGTH_SHORT).show()
-            } else {
-                showUpgradeComingSoon("Traveler")
+            when (session.plan) {
+                "plus" -> Toast.makeText(this, "You are already on the Traveler plan.", Toast.LENGTH_SHORT).show()
+                "pro"  -> Toast.makeText(this, "Downgrade not supported. Cancel from Play Store.", Toast.LENGTH_LONG).show()
+                else   -> launchPurchase(plusProductDetails, PRODUCT_TRAVELER)
             }
         }
 
         binding.btnUpgradePro.setOnClickListener {
-            if (session.plan == "pro") {
-                Toast.makeText(this, "You are already on the Globetrotter plan.", Toast.LENGTH_SHORT).show()
-            } else {
-                showUpgradeComingSoon("Globetrotter")
+            when (session.plan) {
+                "pro" -> Toast.makeText(this, "You are already on the Globetrotter plan.", Toast.LENGTH_SHORT).show()
+                else  -> launchPurchase(proProductDetails, PRODUCT_GLOBETROTTER)
             }
         }
     }
 
-    private fun showUpgradeComingSoon(planName: String) {
-        Toast.makeText(
-            this,
-            "In-app purchases coming soon! Upgrade to $planName will be available via Google Play.",
-            Toast.LENGTH_LONG
-        ).show()
+    // ── Billing Setup ─────────────────────────────────────────────
+
+    private fun setupBillingClient() {
+        billingClient = BillingClient.newBuilder(this)
+            .setListener(this)
+            .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
+            .build()
+
+        billingClient.startConnection(object : BillingClientStateListener {
+            override fun onBillingSetupFinished(result: BillingResult) {
+                if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    Log.d(TAG, "Billing connected")
+                    queryProducts()
+                    checkExistingPurchases()
+                } else {
+                    Log.e(TAG, "Billing setup failed: ${result.debugMessage}")
+                }
+            }
+
+            override fun onBillingServiceDisconnected() {
+                Log.w(TAG, "Billing disconnected")
+            }
+        })
+    }
+
+    private fun queryProducts() {
+        val productList = listOf(
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId(PRODUCT_TRAVELER)
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build(),
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId(PRODUCT_GLOBETROTTER)
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build()
+        )
+
+        val params = QueryProductDetailsParams.newBuilder()
+            .setProductList(productList)
+            .build()
+
+        billingClient.queryProductDetailsAsync(params) { result, productDetailsList ->
+            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                for (product in productDetailsList) {
+                    when (product.productId) {
+                        PRODUCT_TRAVELER     -> plusProductDetails = product
+                        PRODUCT_GLOBETROTTER -> proProductDetails = product
+                    }
+                }
+                Log.d(TAG, "Products loaded: ${productDetailsList.size}")
+            } else {
+                Log.e(TAG, "Failed to query products: ${result.debugMessage}")
+            }
+        }
+    }
+
+    private fun checkExistingPurchases() {
+        billingClient.queryPurchasesAsync(
+            QueryPurchasesParams.newBuilder()
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build()
+        ) { result, purchases ->
+            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                for (purchase in purchases) {
+                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
+                        handlePurchase(purchase)
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Purchase Flow ─────────────────────────────────────────────
+
+    private fun launchPurchase(productDetails: ProductDetails?, productId: String) {
+        if (productDetails == null) {
+            Toast.makeText(this, "Loading plans, please try again.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken ?: run {
+            Toast.makeText(this, "No offer available.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(productDetails)
+            .setOfferToken(offerToken)
+            .build()
+
+        val billingFlowParams = BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(listOf(productDetailsParams))
+            .build()
+
+        billingClient.launchBillingFlow(this, billingFlowParams)
+    }
+
+    override fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
+        when (result.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                purchases?.forEach { purchase ->
+                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
+                        handlePurchase(purchase)
+                    }
+                }
+            }
+            BillingClient.BillingResponseCode.USER_CANCELED -> {
+                Log.d(TAG, "User cancelled purchase")
+            }
+            else -> {
+                Log.e(TAG, "Purchase error: ${result.debugMessage}")
+                Toast.makeText(this, "Purchase failed: ${result.debugMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // ── Verify Purchase on Server ──────────────────────────────────
+
+    private fun handlePurchase(purchase: Purchase) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val productId = purchase.products.firstOrNull() ?: return@launch
+                val json = JSONObject().apply {
+                    put("userId", session.userId)
+                    put("deviceId", session.deviceId)
+                    put("purchaseToken", purchase.purchaseToken)
+                    put("productId", productId)
+                }
+
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/verify-purchase")
+                    .post(body)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: "{}"
+
+                if (response.isSuccessful) {
+                    val responseJson = JSONObject(responseBody)
+                    val newPlan = responseJson.optString("plan", session.plan)
+                    session.plan = newPlan
+
+                    // Acknowledge the purchase
+                    if (!purchase.isAcknowledged) {
+                        val ackParams = AcknowledgePurchaseParams.newBuilder()
+                            .setPurchaseToken(purchase.purchaseToken)
+                            .build()
+                        billingClient.acknowledgePurchase(ackParams) { ackResult ->
+                            Log.d(TAG, "Ack result: ${ackResult.responseCode}")
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        updateCurrentPlanIndicators()
+                        Toast.makeText(
+                            this@SubscriptionActivity,
+                            "Upgrade successful! Welcome to ${session.planDisplayName}.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    Log.e(TAG, "Server verification failed: $responseBody")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@SubscriptionActivity, "Verification failed. Contact support.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Purchase verification error", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@SubscriptionActivity, "Network error. Please try again.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        billingClient.endConnection()
     }
 }

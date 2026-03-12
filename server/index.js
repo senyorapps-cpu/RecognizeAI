@@ -5,6 +5,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { google } = require("googleapis");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -730,6 +731,77 @@ app.get("/api/user/:id", async (req, res) => {
   }
 });
 
+
+// ── Verify Purchase endpoint ──────────────────────────────────────
+
+const PLAN_MAP = {
+  "plan_traveler_monthly":     "plus",
+  "plan_globetrotter_monthly": "pro"
+};
+
+app.post("/api/verify-purchase", async (req, res) => {
+  const { userId, deviceId, purchaseToken, productId } = req.body;
+  if (!purchaseToken || !productId) {
+    return res.status(400).json({ error: "Missing purchaseToken or productId" });
+  }
+
+  const newPlan = PLAN_MAP[productId];
+  if (!newPlan) {
+    return res.status(400).json({ error: "Unknown productId" });
+  }
+
+  try {
+    // Load service account key
+    const keyPath = path.join(__dirname, "google-play-key.json");
+    const auth = new google.auth.GoogleAuth({
+      keyFile: keyPath,
+      scopes: ["https://www.googleapis.com/auth/androidpublisher"]
+    });
+
+    const androidPublisher = google.androidpublisher({ version: "v3", auth });
+    const packageName = "com.example.recognizeai";
+
+    // Verify the subscription purchase with Google
+    const verifyResponse = await androidPublisher.purchases.subscriptions.get({
+      packageName,
+      subscriptionId: productId,
+      token: purchaseToken
+    });
+
+    const subscription = verifyResponse.data;
+
+    // Check subscription is active (not expired or cancelled)
+    const expiryMs = parseInt(subscription.expiryTimeMillis || "0");
+    if (expiryMs < Date.now()) {
+      return res.status(400).json({ error: "Subscription expired" });
+    }
+
+    // Update plan in DB
+    const client = await pool.connect();
+    try {
+      if (userId && parseInt(userId) > 0) {
+        await client.query(
+          "UPDATE users SET plan = $1 WHERE id = $2",
+          [newPlan, userId]
+        );
+      } else if (deviceId) {
+        await client.query(
+          "UPDATE users SET plan = $1 WHERE device_id = $2",
+          [newPlan, deviceId]
+        );
+      }
+    } finally {
+      client.release();
+    }
+
+    console.log(`[Purchase] Verified: productId=${productId}, plan=${newPlan}, userId=${userId}`);
+    res.json({ success: true, plan: newPlan });
+
+  } catch (error) {
+    console.error("[Purchase] Verification error:", error.message);
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
 
 // ── Landmark endpoints ──────────────────────────────────────────
 
