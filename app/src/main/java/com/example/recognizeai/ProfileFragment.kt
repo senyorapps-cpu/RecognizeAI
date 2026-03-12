@@ -182,6 +182,10 @@ class ProfileFragment : Fragment() {
             startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
         }
 
+        binding.settingTerms.setOnClickListener {
+            startActivity(Intent(requireContext(), TermsOfServiceActivity::class.java))
+        }
+
         binding.settingPrivacy.setOnClickListener {
             startActivity(Intent(requireContext(), PrivacyPolicyActivity::class.java))
         }
