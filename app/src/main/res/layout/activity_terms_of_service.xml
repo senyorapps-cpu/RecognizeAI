@@ -43,23 +43,9 @@
 
     </LinearLayout>
 
-    <ScrollView
+    <WebView
+        android:id="@+id/webView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
-
-        <TextView
-            android:id="@+id/tvTermsContent"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/inter"
-            android:lineSpacingMultiplier="1.5"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="32dp"
-            android:textColor="@color/deep_blue"
-            android:textSize="14sp" />
-
-    </ScrollView>
+        android:layout_height="match_parent" />
 
 </LinearLayout>

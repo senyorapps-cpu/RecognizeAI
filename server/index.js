@@ -730,21 +730,6 @@ app.get("/api/user/:id", async (req, res) => {
   }
 });
 
-// ── Privacy Policy endpoint ──────────────────────────────────────
-
-app.get("/api/privacy-policy", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT lang, content FROM privacy_policies");
-    const policies = {};
-    for (const row of result.rows) {
-      policies[row.lang] = row.content;
-    }
-    res.json(policies);
-  } catch (error) {
-    console.error("Privacy policy error:", error);
-    res.status(500).json({ error: "Failed to fetch privacy policy" });
-  }
-});
 
 // ── Landmark endpoints ──────────────────────────────────────────
 
