@@ -22,15 +22,13 @@
             <!-- SECTION 1 — Hero Image -->
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="220dp"
+                android:layout_height="320dp"
                 android:background="@color/hero_background">
 
                 <ImageView
                     android:id="@+id/imgHero"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:adjustViewBounds="true"
+                    android:layout_height="match_parent"
                     android:scaleType="fitCenter"
                     android:contentDescription="Colosseum" />
 
