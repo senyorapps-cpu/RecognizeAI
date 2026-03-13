@@ -19,6 +19,6 @@ class PrivacyPolicyActivity : AppCompatActivity() {
 
         binding.webView.webViewClient = WebViewClient()
         binding.webView.settings.javaScriptEnabled = false
-        binding.webView.loadUrl("http://tripai.mnaks.online/privacy")
+        binding.webView.loadUrl("http://sightai.mnaks.online/privacy")
     }
 }

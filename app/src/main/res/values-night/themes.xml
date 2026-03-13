@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.TripAI" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="Theme.SightAI" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/deep_blue</item>
         <item name="colorPrimaryVariant">@color/deep_blue</item>
         <item name="colorOnPrimary">@color/white</item>
@@ -20,7 +20,7 @@
         <item name="android:activityCloseExitAnimation">@android:anim/fade_out</item>
     </style>
 
-    <style name="Theme.TripAI.Detail" parent="Theme.TripAI">
+    <style name="Theme.SightAI.Detail" parent="Theme.SightAI">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
@@ -35,7 +35,7 @@
         <item name="android:background">@android:color/transparent</item>
     </style>
 
-    <style name="Theme.TripAI.Camera" parent="Theme.TripAI">
+    <style name="Theme.SightAI.Camera" parent="Theme.SightAI">
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">@android:color/black</item>

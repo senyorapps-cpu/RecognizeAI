@@ -18,7 +18,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.TripAI">
+        android:theme="@style/Theme.SightAI">
 
         <activity
             android:name=".OnboardingActivity"
@@ -39,13 +39,13 @@
 
         <activity
             android:name=".CameraActivity"
-            android:theme="@style/Theme.TripAI.Camera" />
+            android:theme="@style/Theme.SightAI.Camera" />
 
         <activity android:name=".AnalyzingActivity" />
 
         <activity
             android:name=".LandmarkDetailActivity"
-            android:theme="@style/Theme.TripAI.Detail" />
+            android:theme="@style/Theme.SightAI.Detail" />
 
         <activity android:name=".SavedPhotosActivity" />
         <activity android:name=".PrivacyPolicyActivity" />

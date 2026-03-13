@@ -36,9 +36,9 @@ app.use(cors({
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
-// Serve website for tripai.mnaks.online
+// Serve website for sightai.mnaks.online
 app.use((req, res, next) => {
-  if (req.hostname === "tripai.mnaks.online") {
+  if (req.hostname === "sightai.mnaks.online") {
     return express.static(path.join(__dirname, "website"), { extensions: ["html"] })(req, res, next);
   }
   next();
@@ -564,7 +564,7 @@ senyor.apps@gmail.com`,
 }
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", service: "tripai-api", db: "postgresql" });
+  res.json({ status: "ok", service: "sightai-api", db: "postgresql" });
 });
 
 // ── Device language lookup (for restoring language after reinstall) ──
@@ -2055,7 +2055,7 @@ app.get("/api/admin/database", adminAuth, async (req, res) => {
 initDb()
   .then(() => {
     app.listen(PORT, () => {
-      console.log("TripAI API server running on port " + PORT);
+      console.log("SightAI API server running on port " + PORT);
     });
   })
   .catch((err) => {

@@ -58,7 +58,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Unlock the full power of TripAI"
+                android:text="Unlock the full power of SightAI"
                 android:textSize="14sp"
                 android:fontFamily="@font/inter"
                 android:textColor="@color/deep_blue_50"

@@ -19,6 +19,6 @@ class TermsOfServiceActivity : AppCompatActivity() {
 
         binding.webView.webViewClient = WebViewClient()
         binding.webView.settings.javaScriptEnabled = false
-        binding.webView.loadUrl("http://tripai.mnaks.online/terms")
+        binding.webView.loadUrl("http://sightai.mnaks.online/terms")
     }
 }
