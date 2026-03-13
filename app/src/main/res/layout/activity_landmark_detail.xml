@@ -22,7 +22,7 @@
             <!-- SECTION 1 — Hero Image -->
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="320dp"
+                android:layout_height="420dp"
                 android:background="@color/hero_background">
 
                 <ImageView
