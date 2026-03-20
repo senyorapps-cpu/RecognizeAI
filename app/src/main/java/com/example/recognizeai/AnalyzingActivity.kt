@@ -99,11 +99,46 @@ class AnalyzingActivity : AppCompatActivity() {
 
         val photoUriString = intent.getStringExtra("photo_uri")
         if (photoUriString != null) {
-            val session = SessionManager(this)
-            if (session.scansToday >= session.scanLimit) {
-                showScanLimitDialog(session)
-            } else {
-                analyzeWithServer(Uri.parse(photoUriString))
+            CoroutineScope(Dispatchers.IO).launch {
+                // Always fetch fresh plan limits before checking so dashboard changes apply immediately
+                try {
+                    val limitsRequest = Request.Builder()
+                        .url("${SessionManager.BASE_URL}/api/plan-limits")
+                        .get().build()
+                    val limitsResponse = client.newCall(limitsRequest).execute()
+                    val limitsBody = limitsResponse.body?.string()
+                    if (limitsResponse.isSuccessful && limitsBody != null) {
+                        val json = JSONObject(limitsBody)
+                        val free = json.optJSONObject("free")
+                        val plus = json.optJSONObject("plus")
+                        val pro  = json.optJSONObject("pro")
+                        if (free != null && plus != null && pro != null) {
+                            val sm = SessionManager(this@AnalyzingActivity)
+                            sm.savePlanLimits(
+                                freeScans   = free.optInt("scans_per_day", 5),
+                                plusScans   = plus.optInt("scans_per_day", 50),
+                                proScans    = pro.optInt("scans_per_day", 200),
+                                freeJournal = free.optInt("max_journal", 20),
+                                freeQueue   = free.optInt("max_queue", 3),
+                                plusQueue   = plus.optInt("max_queue", 20),
+                                proQueue    = pro.optInt("max_queue", -1),
+                                freePins    = free.optInt("max_pins", 20),
+                                freeAudio   = free.optInt("audio_enabled", 0) != 0,
+                                freeShare   = free.optInt("share_enabled", 0) != 0
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("AnalyzingActivity", "Failed to refresh plan limits", e)
+                }
+                val session = SessionManager(this@AnalyzingActivity)
+                withContext(Dispatchers.Main) {
+                    if (session.scansToday >= session.scanLimit) {
+                        showScanLimitDialog(session)
+                    } else {
+                        analyzeWithServer(Uri.parse(photoUriString))
+                    }
+                }
             }
         } else {
             apiFinished = true
@@ -418,13 +453,21 @@ class AnalyzingActivity : AppCompatActivity() {
                     if (!response.isSuccessful) {
                         val errorMsg = try {
                             val errJson = JSONObject(responseBody)
-                            if (errJson.optString("error") == "scan_limit_reached") {
-                                withContext(Dispatchers.Main) {
-                                    showScanLimitDialog(SessionManager(this@AnalyzingActivity))
+                            when (errJson.optString("error")) {
+                                "scan_limit_reached" -> {
+                                    withContext(Dispatchers.Main) {
+                                        showScanLimitDialog(SessionManager(this@AnalyzingActivity))
+                                    }
+                                    return@withTimeoutOrNull null
                                 }
-                                return@withTimeoutOrNull null
+                                "not_a_landmark" -> {
+                                    withContext(Dispatchers.Main) {
+                                        showNotALandmarkDialog()
+                                    }
+                                    return@withTimeoutOrNull null
+                                }
+                                else -> errJson.optString("message", "Server error: ${response.code}")
                             }
-                            errJson.optString("message", "Server error: ${response.code}")
                         } catch (_: Exception) {
                             "Server error: ${response.code}"
                         }
@@ -643,6 +686,29 @@ class AnalyzingActivity : AppCompatActivity() {
             startActivity(Intent(this, SubscriptionActivity::class.java))
             finish()
         }
+        dialog.findViewById<TextView>(R.id.btnDismiss).setOnClickListener {
+            dialog.dismiss()
+            finish()
+        }
+        dialog.show()
+    }
+
+    private fun showNotALandmarkDialog() {
+        percentAnimator?.cancel()
+        waitingAnimator?.cancel()
+        hasNavigated = true
+
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_scan_limit)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.setCancelable(false)
+
+        dialog.findViewById<TextView>(R.id.tvScanLimitTitle).text = "Not a Landmark"
+        dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
+            "This doesn't appear to be a landmark or place of interest.\n\nPlease try again with a photo of a real-world building, monument, or historical site."
+
+        dialog.findViewById<TextView>(R.id.btnUpgrade).visibility = View.GONE
         dialog.findViewById<TextView>(R.id.btnDismiss).setOnClickListener {
             dialog.dismiss()
             finish()

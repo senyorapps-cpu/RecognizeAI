@@ -3,7 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -52,8 +53,51 @@
 
         </LinearLayout>
 
+        <!-- Guest sign-in prompt (shown only for guests) -->
+        <LinearLayout
+            android:id="@+id/signInPrompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:background="@drawable/bg_setting_item"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="10dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_person"
+                android:tint="@color/deep_blue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_bold"
+                android:gravity="center"
+                android:text="@string/guest_sign_in_title"
+                android:textColor="@color/deep_blue"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/inter"
+                android:gravity="center"
+                android:text="@string/guest_sign_in_desc"
+                android:textColor="@color/deep_blue_50"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
         <!-- Stats row -->
         <LinearLayout
+            android:id="@+id/statsRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -537,6 +581,7 @@
                 android:src="@drawable/ic_logout" />
 
             <TextView
+                android:id="@+id/tvLogoutText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/inter_bold"

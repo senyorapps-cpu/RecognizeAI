@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TravelAI</string>
+    <string name="app_name">SightAI</string>
     <string name="onboarding_title_1">Erkunde die Welt</string>
     <string name="onboarding_desc_1">Entdecke verborgene Geheimnisse und kulturelle Wunder durch unsere KI-gestützte Linse.</string>
     <string name="onboarding_title_2">Intelligentes Tagebuch</string>

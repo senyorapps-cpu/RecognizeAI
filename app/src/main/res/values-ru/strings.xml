@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TravelAI</string>
+    <string name="app_name">SightAI</string>
     <string name="onboarding_title_1">Исследуйте мир</string>
     <string name="onboarding_desc_1">Откройте для себя скрытые секреты и культурные чудеса через нашу AI-камеру.</string>
     <string name="onboarding_title_2">Умный журнал</string>

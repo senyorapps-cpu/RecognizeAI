@@ -58,6 +58,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var userLocation: Location? = null
 
     private val markerDataMap = mutableMapOf<String, JSONObject>()
+    private lateinit var session: SessionManager
     private var selectedPlace: JSONObject? = null
 
     private val client = OkHttpClient.Builder()
@@ -81,6 +82,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        session = SessionManager(requireContext())
         progressBar = view.findViewById(R.id.progressBar)
         cardDetail = view.findViewById(R.id.cardLandmarkDetail)
         tvCardName = view.findViewById(R.id.tvCardName)
@@ -450,7 +452,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun loadNearbyLandmarks(lat: Double, lng: Double) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val session = SessionManager(requireContext())
                 val userId = session.userId
                 val deviceId = session.deviceId
                 val url = "${SessionManager.BASE_URL}/api/landmarks/nearby?lat=$lat&lng=$lng&radius=5&user_id=$userId&device_id=$deviceId"
@@ -460,7 +461,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
                 if (response.isSuccessful) {
                     val arr = JSONArray(body)
-                    val pinLimit = if (session.isPlus) arr.length() else minOf(arr.length(), 20)
+                    val pinLimit = minOf(arr.length(), session.maxMapPins)
                     withContext(Dispatchers.Main) {
                         val goldIcon = BitmapDescriptorFactory.fromBitmap(createMarkerIcon(0xFFDFC623.toInt()))
                         for (i in 0 until pinLimit) {
@@ -504,7 +505,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     withContext(Dispatchers.Main) {
                         // Cache category icons to avoid recreating per marker
                         val iconCache = mutableMapOf<String, com.google.android.gms.maps.model.BitmapDescriptor>()
-                        for (i in 0 until arr.length()) {
+                        val placeLimit = minOf(arr.length(), session.maxMapPins)
+                        for (i in 0 until placeLimit) {
                             val obj = arr.getJSONObject(i)
                             val markerLat = obj.optDouble("latitude", Double.NaN)
                             val markerLng = obj.optDouble("longitude", Double.NaN)

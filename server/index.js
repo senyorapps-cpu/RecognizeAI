@@ -36,6 +36,9 @@ app.use(cors({
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
+// Serve ACME challenge for SSL cert renewal
+app.use("/.well-known/acme-challenge", express.static("/var/www/letsencrypt/.well-known/acme-challenge"));
+
 // Serve website for sightai.mnaks.online
 app.use((req, res, next) => {
   if (req.hostname === "sightai.mnaks.online") {
@@ -242,6 +245,29 @@ async function initDb() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT 'free'`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_scans INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS scan_date DATE`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS purchase_token TEXT`);
+
+    // Plan limits table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS plan_limits (
+        plan VARCHAR(20) PRIMARY KEY,
+        scans_per_day INTEGER NOT NULL DEFAULT 5,
+        max_journal INTEGER NOT NULL DEFAULT 20,
+        max_queue INTEGER NOT NULL DEFAULT 3,
+        max_pins INTEGER NOT NULL DEFAULT 20,
+        audio_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        share_enabled BOOLEAN NOT NULL DEFAULT FALSE
+      )
+    `);
+    // Seed default limits if empty
+    await client.query(`
+      INSERT INTO plan_limits (plan, scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled) VALUES
+        ('free', 5,   20, 3,   20, FALSE, FALSE),
+        ('plus', 50,  -1, 20,  -1, TRUE,  TRUE),
+        ('pro',  200, -1, -1,  -1, TRUE,  TRUE)
+      ON CONFLICT (plan) DO NOTHING
+    `);
 
     // Create indexes
     await client.query(`CREATE INDEX IF NOT EXISTS idx_landmarks_user_id ON landmarks(user_id)`);
@@ -739,6 +765,33 @@ const PLAN_MAP = {
   "plan_globetrotter_monthly": "pro"
 };
 
+// ── Plan limits cache (loaded from DB) ────────────────────────
+let planLimitsCache = {
+  free: { scans_per_day: 5,   max_journal: 20, max_queue: 3,  max_pins: 20, audio_enabled: false, share_enabled: false },
+  plus: { scans_per_day: 50,  max_journal: -1, max_queue: 20, max_pins: -1, audio_enabled: true,  share_enabled: true  },
+  pro:  { scans_per_day: 200, max_journal: -1, max_queue: -1, max_pins: -1, audio_enabled: true,  share_enabled: true  },
+};
+
+async function loadPlanLimits() {
+  try {
+    const result = await pool.query("SELECT * FROM plan_limits");
+    for (const row of result.rows) {
+      planLimitsCache[row.plan] = {
+        scans_per_day: row.scans_per_day,
+        max_journal:   row.max_journal,
+        max_queue:     row.max_queue,
+        max_pins:      row.max_pins,
+        audio_enabled: row.audio_enabled,
+        share_enabled: row.share_enabled,
+      };
+    }
+    console.log("[PlanLimits] Loaded from DB:", JSON.stringify(planLimitsCache));
+  } catch (e) {
+    console.error("[PlanLimits] Failed to load, using defaults:", e.message);
+  }
+}
+// called after DB init
+
 app.post("/api/verify-purchase", async (req, res) => {
   const { userId, deviceId, purchaseToken, productId } = req.body;
   if (!purchaseToken || !productId) {
@@ -759,7 +812,7 @@ app.post("/api/verify-purchase", async (req, res) => {
     });
 
     const androidPublisher = google.androidpublisher({ version: "v3", auth });
-    const packageName = "com.example.recognizeai";
+    const packageName = "online.mnaks.sightai";
 
     // Verify the subscription purchase with Google
     const verifyResponse = await androidPublisher.purchases.subscriptions.get({
@@ -776,31 +829,63 @@ app.post("/api/verify-purchase", async (req, res) => {
       return res.status(400).json({ error: "Subscription expired" });
     }
 
+    const expiryDate = new Date(expiryMs);
+
     // Update plan in DB
     const client = await pool.connect();
     try {
       if (userId && parseInt(userId) > 0) {
         await client.query(
-          "UPDATE users SET plan = $1 WHERE id = $2",
-          [newPlan, userId]
+          "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE id = $4",
+          [newPlan, expiryDate, purchaseToken, userId]
         );
       } else if (deviceId) {
         await client.query(
-          "UPDATE users SET plan = $1 WHERE device_id = $2",
-          [newPlan, deviceId]
+          "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE device_id = $4",
+          [newPlan, expiryDate, purchaseToken, deviceId]
         );
       }
     } finally {
       client.release();
     }
 
-    console.log(`[Purchase] Verified: productId=${productId}, plan=${newPlan}, userId=${userId}`);
+    console.log(`[Purchase] Verified: productId=${productId}, plan=${newPlan}, userId=${userId}, expires=${expiryDate}`);
     res.json({ success: true, plan: newPlan });
 
   } catch (error) {
     console.error("[Purchase] Verification error:", error.message);
-    res.status(500).json({ error: "Verification failed" });
+    // Fallback: grant plan without Google API verification (for internal testing)
+    // TODO: remove fallback before production launch
+    try {
+      const fallbackExpiry = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000); // 31 days
+      const client = await pool.connect();
+      try {
+        if (userId && parseInt(userId) > 0) {
+          await client.query(
+            "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE id = $4",
+            [newPlan, fallbackExpiry, purchaseToken, userId]
+          );
+        } else if (deviceId) {
+          await client.query(
+            "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE device_id = $4",
+            [newPlan, fallbackExpiry, purchaseToken, deviceId]
+          );
+        }
+      } finally {
+        client.release();
+      }
+      console.log(`[Purchase] Fallback grant: productId=${productId}, plan=${newPlan}, userId=${userId}, expires=${fallbackExpiry}`);
+      res.json({ success: true, plan: newPlan });
+    } catch (dbError) {
+      console.error("[Purchase] Fallback DB error:", dbError.message);
+      res.status(500).json({ error: "Verification failed" });
+    }
   }
+});
+
+// ── Public plan limits endpoint ───────────────────────────────────
+app.get("/api/plan-limits", (req, res) => {
+  res.json(planLimitsCache);
 });
 
 // ── Landmark endpoints ──────────────────────────────────────────
@@ -832,12 +917,19 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
     console.log(`[Analyze] Language requested: ${language} (${langName})`);
 
     // ── Scan limit enforcement ──────────────────────────────────
-    const PLAN_LIMITS = { free: 5, plus: 50, pro: 200 };
+    const PLAN_LIMITS = {
+      free: planLimitsCache.free?.scans_per_day ?? 5,
+      plus: planLimitsCache.plus?.scans_per_day ?? 50,
+      pro:  planLimitsCache.pro?.scans_per_day  ?? 200,
+    };
     const rawUserId = req.body?.user_id || null;
     const rawDeviceId = req.body?.device_id || null;
     let limitUserId = rawUserId ? parseInt(rawUserId) : null;
     let userPlan = "free";
     let scansToday = 0;
+
+    let scanUserId = null; // track which user DB row to increment after landmark check
+    let scanIsNewDay = false;
 
     if (limitUserId) {
       const uRes = await pool.query(
@@ -858,12 +950,8 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
             plan: userPlan, scans_today: scansToday, scan_limit: limit,
           });
         }
-        if (savedDate === today) {
-          await pool.query("UPDATE users SET daily_scans = daily_scans + 1 WHERE id = $1", [limitUserId]);
-        } else {
-          await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE WHERE id = $1", [limitUserId]);
-        }
-        scansToday++;
+        scanUserId = u.id;
+        scanIsNewDay = savedDate !== today;
       }
     } else if (rawDeviceId) {
       const uRes = await pool.query(
@@ -884,12 +972,8 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
             plan: userPlan, scans_today: scansToday, scan_limit: limit,
           });
         }
-        if (savedDate === today) {
-          await pool.query("UPDATE users SET daily_scans = daily_scans + 1 WHERE id = $1", [u.id]);
-        } else {
-          await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE WHERE id = $1", [u.id]);
-        }
-        scansToday++;
+        scanUserId = u.id;
+        scanIsNewDay = savedDate !== today;
       }
     }
     // ────────────────────────────────────────────────────────────
@@ -898,10 +982,14 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
       model: "gemini-2.0-flash",
     });
 
-    const prompt = `Analyze this image and identify the landmark, building, or place of interest shown.
-IMPORTANT: All text values in your response MUST be written in ${langName} language.
-Respond ONLY with a JSON object in this exact format, no markdown, no code fences:
+    const prompt = `Analyze this image. First, determine if it shows a real-world landmark, building, monument, historical site, or recognizable place of interest.
+
+If the image does NOT show a real-world landmark or place (e.g. it is a drawing, painting, cartoon, screenshot, random object, person, animal, food, or an unidentifiable scene), respond ONLY with:
+{"not_a_landmark": true}
+
+If it DOES show a real-world landmark or place, respond ONLY with a JSON object in this exact format, no markdown, no code fences. ALL text values must be in ${langName}:
 {
+  "not_a_landmark": false,
   "name": "Name of the landmark (in ${langName})",
   "location": "Full address or City, Country (in ${langName})",
   "year_built": "Year or era built (in ${langName})",
@@ -917,8 +1005,7 @@ Respond ONLY with a JSON object in this exact format, no markdown, no code fence
   "nearby2_category": "Category (in ${langName})",
   "nearby3_name": "Name of a third nearby attraction (in ${langName})",
   "nearby3_category": "Category (in ${langName})"
-}
-If you cannot identify a specific landmark, make your best guess based on the architectural style and features visible. Remember: ALL values must be in ${langName}.`;
+}`;
 
     // Single retry with short wait for rate limits
     let result;
@@ -985,6 +1072,25 @@ If you cannot identify a specific landmark, make your best guess based on the ar
       .trim();
 
     const parsed = JSON.parse(cleanJson);
+
+    // Reject non-landmark images — do NOT count this against daily limit
+    if (parsed.not_a_landmark === true) {
+      console.log("[Analyze] Not a landmark — rejecting without counting scan");
+      return res.status(422).json({
+        error: "not_a_landmark",
+        message: "This doesn't appear to be a landmark or place of interest. Please try again with a photo of a real-world landmark, building, or monument."
+      });
+    }
+
+    // Increment scan count only for successfully identified landmarks
+    if (scanUserId) {
+      if (scanIsNewDay) {
+        await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE WHERE id = $1", [scanUserId]);
+      } else {
+        await pool.query("UPDATE users SET daily_scans = daily_scans + 1 WHERE id = $1", [scanUserId]);
+      }
+      scansToday++;
+    }
 
     // Save to database with user_id, device_id, and optional location
     let userId = req.body?.user_id || null;
@@ -1610,7 +1716,7 @@ h1{font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;line-heig
   <div class="footer">
     <div></div>
     <div class="footer-brand">
-      <span class="footer-label">TravelAI App</span>
+      <span class="footer-label">SightAI App</span>
       <div class="footer-icon"><svg fill="none" stroke="#25aff4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
     </div>
   </div>
@@ -1632,6 +1738,36 @@ function escapeHtml(str) {
 }
 
 // ── Admin Dashboard ─────────────────────────────────────────────
+
+// ── Admin: Plan Limits ───────────────────────────────────────────
+app.get("/api/admin/plan-limits", adminAuth, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM plan_limits ORDER BY plan");
+    res.json(result.rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/admin/plan-limits/:plan", adminAuth, async (req, res) => {
+  const { plan } = req.params;
+  const { scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled } = req.body;
+  if (!["free", "plus", "pro"].includes(plan)) {
+    return res.status(400).json({ error: "Invalid plan" });
+  }
+  try {
+    await pool.query(`
+      UPDATE plan_limits SET
+        scans_per_day = $1, max_journal = $2, max_queue = $3,
+        max_pins = $4, audio_enabled = $5, share_enabled = $6
+      WHERE plan = $7
+    `, [scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled, plan]);
+    await loadPlanLimits(); // refresh cache
+    res.json({ success: true, limits: planLimitsCache[plan] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // Serve admin HTML page
 app.get("/admin", (req, res) => {
@@ -2052,8 +2188,47 @@ app.get("/api/admin/database", adminAuth, async (req, res) => {
 });
 
 // Initialize DB then start server
+// ── Subscription expiry downgrade job ─────────────────────────────
+async function downgradeExpiredSubscriptions() {
+  try {
+    const result = await pool.query(
+      "UPDATE users SET plan = 'free', subscription_expires_at = NULL, purchase_token = NULL WHERE plan != 'free' AND subscription_expires_at IS NOT NULL AND subscription_expires_at < NOW() RETURNING id, email, plan"
+    );
+    if (result.rowCount > 0) {
+      console.log(`[Subscription] Downgraded ${result.rowCount} expired subscriptions`);
+    }
+  } catch (e) {
+    console.error("[Subscription] Expiry check error:", e.message);
+  }
+}
+
+// ── Downgrade endpoint (called by app when no active purchases found) ─
+app.post("/api/subscription/downgrade", async (req, res) => {
+  const { userId, deviceId } = req.body;
+  try {
+    if (userId && parseInt(userId) > 0) {
+      await pool.query(
+        "UPDATE users SET plan = 'free', subscription_expires_at = NULL, purchase_token = NULL WHERE id = $1 AND subscription_expires_at IS NOT NULL AND subscription_expires_at < NOW()",
+        [userId]
+      );
+    } else if (deviceId) {
+      await pool.query(
+        "UPDATE users SET plan = 'free', subscription_expires_at = NULL, purchase_token = NULL WHERE device_id = $1 AND subscription_expires_at IS NOT NULL AND subscription_expires_at < NOW()",
+        [deviceId]
+      );
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 initDb()
-  .then(() => {
+  .then(async () => {
+    await loadPlanLimits();
+    // Run expiry check on startup and every 24 hours
+    downgradeExpiredSubscriptions();
+    setInterval(downgradeExpiredSubscriptions, 24 * 60 * 60 * 1000);
     app.listen(PORT, () => {
       console.log("SightAI API server running on port " + PORT);
     });

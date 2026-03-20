@@ -26,6 +26,7 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     private var plusProductDetails: ProductDetails? = null
     private var proProductDetails: ProductDetails? = null
+    private var isSilentCheck = false
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -134,17 +135,49 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     private fun checkExistingPurchases() {
+        isSilentCheck = true
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build()
         ) { result, purchases ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                for (purchase in purchases) {
-                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
+                val activePurchases = purchases.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
+                if (activePurchases.isEmpty() && session.plan != "free") {
+                    // No active subscriptions but user has paid plan — check server for expiry
+                    notifyServerNoActivePurchases()
+                } else {
+                    for (purchase in activePurchases) {
                         handlePurchase(purchase)
                     }
                 }
+            }
+            isSilentCheck = false
+        }
+    }
+
+    private fun notifyServerNoActivePurchases() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val json = org.json.JSONObject().apply {
+                    put("userId", session.userId)
+                    put("deviceId", session.deviceId)
+                }
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/subscription/downgrade")
+                    .post(body)
+                    .build()
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val newPlan = "free"
+                    if (session.plan != "free") {
+                        session.plan = newPlan
+                        withContext(Dispatchers.Main) { updateCurrentPlanIndicators() }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Downgrade check error", e)
             }
         }
     }
@@ -240,13 +273,13 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     }
                 } else {
                     Log.e(TAG, "Server verification failed: $responseBody")
-                    withContext(Dispatchers.Main) {
+                    if (!isSilentCheck) withContext(Dispatchers.Main) {
                         Toast.makeText(this@SubscriptionActivity, "Verification failed. Contact support.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Purchase verification error", e)
-                withContext(Dispatchers.Main) {
+                if (!isSilentCheck) withContext(Dispatchers.Main) {
                     Toast.makeText(this@SubscriptionActivity, "Network error. Please try again.", Toast.LENGTH_SHORT).show()
                 }
             }

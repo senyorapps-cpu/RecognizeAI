@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TravelAI</string>
+    <string name="app_name">SightAI</string>
     <string name="onboarding_title_1">Explorez le Monde</string>
     <string name="onboarding_desc_1">Découvrez des secrets cachés et des merveilles culturelles grâce à notre objectif alimenté par l\'IA.</string>
     <string name="onboarding_title_2">Journal Intelligent</string>

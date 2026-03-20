@@ -11,6 +11,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -79,6 +82,24 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Draw behind system bars so nav bar insets can be applied manually
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val navBarBasePadding = binding.bottomNavBar.paddingBottom
+        val navBarBaseHeight = binding.bottomNavBar.layoutParams.height
+        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNavBar) { view, insets ->
+            val systemNavHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            view.setPadding(
+                view.paddingLeft,
+                view.paddingTop,
+                view.paddingRight,
+                navBarBasePadding + systemNavHeight
+            )
+            val params = view.layoutParams
+            params.height = navBarBaseHeight + systemNavHeight
+            view.layoutParams = params
+            insets
+        }
+
         setupNavigation()
 
         if (savedInstanceState != null) {
@@ -126,6 +147,40 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         checkAndShowSyncDialog()
+        refreshPlanLimits()
+    }
+
+    private fun refreshPlanLimits() {
+        val session = SessionManager(this)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val client = okhttp3.OkHttpClient()
+                val request = okhttp3.Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/plan-limits")
+                    .get().build()
+                val response = client.newCall(request).execute()
+                val body = response.body?.string() ?: return@launch
+                if (!response.isSuccessful) return@launch
+                val json = org.json.JSONObject(body)
+                val free = json.optJSONObject("free") ?: return@launch
+                val plus = json.optJSONObject("plus") ?: return@launch
+                val pro  = json.optJSONObject("pro")  ?: return@launch
+                session.savePlanLimits(
+                    freeScans   = free.optInt("scans_per_day", 5),
+                    plusScans   = plus.optInt("scans_per_day", 50),
+                    proScans    = pro.optInt("scans_per_day", 200),
+                    freeJournal = free.optInt("max_journal", 20),
+                    freeQueue   = free.optInt("max_queue", 3),
+                    plusQueue   = plus.optInt("max_queue", 20),
+                    proQueue    = pro.optInt("max_queue", -1),
+                    freePins    = free.optInt("max_pins", 20),
+                    freeAudio   = free.optInt("audio_enabled", 0) != 0,
+                    freeShare   = free.optInt("share_enabled", 0) != 0
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to refresh plan limits", e)
+            }
+        }
     }
 
     override fun onStart() {

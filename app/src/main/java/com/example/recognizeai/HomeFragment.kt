@@ -64,6 +64,7 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupGreeting()
         loadTopPlaces()
         setupClickListeners()
         loadLastCapture()
@@ -73,6 +74,79 @@ class HomeFragment : Fragment() {
         super.onHiddenChanged(hidden)
         if (!hidden && _binding != null) {
             loadLastCapture()
+        }
+    }
+
+    private fun setupGreeting() {
+        val session = SessionManager(requireContext())
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val timeGreeting = when {
+            hour < 12 -> "Good Morning"
+            hour < 17 -> "Good Afternoon"
+            else      -> "Good Evening"
+        }
+        val name = if (session.isGoogle) session.displayName.split(" ").firstOrNull() ?: session.displayName else "Explorer"
+        binding.tvGreeting.text = "$timeGreeting, $name!"
+        binding.tvLocationWeather.text = "Detecting location…"
+
+        if (!hasLocationPermission()) {
+            binding.tvLocationWeather.text = ""
+        }
+        // Weather will be loaded by loadTopPlaces() once location is obtained
+    }
+
+    private fun fetchWeatherForLocation(lat: Double, lon: Double) {
+        val ctx = context ?: return  // capture context before coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Reverse geocode city name — isolated try/catch so weather still shows if this fails
+                var city = ""
+                var country = ""
+                try {
+                    val geocoder = android.location.Geocoder(ctx, java.util.Locale.US)
+                    val addresses = geocoder.getFromLocation(lat, lon, 1)
+                    city = addresses?.firstOrNull()?.let { addr ->
+                        addr.locality ?: addr.subAdminArea ?: addr.adminArea
+                    } ?: ""
+                    country = addresses?.firstOrNull()?.countryName ?: ""
+                } catch (geoEx: Exception) {
+                    Log.w("HomeFragment", "Geocoder failed, showing weather without city", geoEx)
+                }
+
+                // Fetch weather from Open-Meteo (free, no API key)
+                val weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true"
+                val weatherRequest = okhttp3.Request.Builder().url(weatherUrl).get().build()
+                val weatherResponse = client.newCall(weatherRequest).execute()
+                val weatherBody = weatherResponse.body?.string() ?: return@launch
+                val weatherJson = org.json.JSONObject(weatherBody)
+                val current = weatherJson.optJSONObject("current_weather") ?: return@launch
+                val tempC = current.optDouble("temperature", Double.NaN)
+                if (tempC.isNaN()) return@launch
+
+                val weatherCode = current.optInt("weathercode", 0)
+                val weatherIcon = when (weatherCode) {
+                    0 -> "☀️"
+                    1, 2 -> "⛅"
+                    3 -> "☁️"
+                    45, 48 -> "🌫️"
+                    51, 53, 55, 61, 63, 65, 80, 81, 82 -> "🌧️"
+                    71, 73, 75, 77, 85, 86 -> "❄️"
+                    95, 96, 99 -> "⛈️"
+                    else -> "🌤️"
+                }
+
+                val locationPart = if (city.isNotEmpty() && country.isNotEmpty()) "📍 $city, $country • " else ""
+                val locationText = "$locationPart$weatherIcon ${tempC.toInt()}°C"
+
+                withContext(Dispatchers.Main) {
+                    if (_binding != null) binding.tvLocationWeather.text = locationText
+                }
+            } catch (e: Exception) {
+                Log.e("HomeFragment", "Failed to load weather", e)
+                withContext(Dispatchers.Main) {
+                    if (_binding != null) binding.tvLocationWeather.text = ""
+                }
+            }
         }
     }
 
@@ -98,7 +172,7 @@ class HomeFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
                     if (jsonArray.length() > 0) {
-                        val last = jsonArray.getJSONObject(jsonArray.length() - 1)
+                        val last = jsonArray.getJSONObject(0)
                         val imageUrl = "${SessionManager.BASE_URL}${last.optString("image_url", "")}"
                         last.put("photo_uri", imageUrl)
                         last.put("server_id", last.optLong("id", -1L))
@@ -169,15 +243,24 @@ class HomeFragment : Fragment() {
                 .addOnSuccessListener { location ->
                     if (location != null) {
                         fetchNearbyPlaces(location.latitude, location.longitude)
+                        fetchWeatherForLocation(location.latitude, location.longitude)
                     } else {
                         fusedClient.lastLocation.addOnSuccessListener { last ->
                             if (last != null) {
                                 fetchNearbyPlaces(last.latitude, last.longitude)
+                                fetchWeatherForLocation(last.latitude, last.longitude)
+                            } else {
+                                if (_binding != null) binding.tvLocationWeather.text = ""
                             }
                         }
                     }
                 }
-        } catch (_: SecurityException) {}
+                .addOnFailureListener {
+                    if (_binding != null) binding.tvLocationWeather.text = ""
+                }
+        } catch (_: SecurityException) {
+            if (_binding != null) binding.tvLocationWeather.text = ""
+        }
     }
 
     private fun hasLocationPermission(): Boolean {

@@ -154,6 +154,7 @@ class LoginActivity : AppCompatActivity() {
                 val user = JSONObject(responseBody)
                 val serverLang = user.optString("language", "")
 
+                fetchPlanLimits()
                 withContext(Dispatchers.Main) {
                     session.saveUser(
                         userId = user.getLong("id"),
@@ -213,6 +214,7 @@ class LoginActivity : AppCompatActivity() {
                 val user = JSONObject(responseBody)
                 val serverLang = user.optString("language", "")
 
+                fetchPlanLimits()
                 withContext(Dispatchers.Main) {
                     session.saveUser(
                         userId = user.getLong("id"),
@@ -243,6 +245,36 @@ class LoginActivity : AppCompatActivity() {
                     navigateToHome()
                 }
             }
+        }
+    }
+
+    private suspend fun fetchPlanLimits() {
+        try {
+            val request = Request.Builder()
+                .url("${SessionManager.BASE_URL}/api/plan-limits")
+                .get()
+                .build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: return
+            if (!response.isSuccessful) return
+            val json = JSONObject(body)
+            val free = json.optJSONObject("free") ?: return
+            val plus = json.optJSONObject("plus") ?: return
+            val pro  = json.optJSONObject("pro")  ?: return
+            session.savePlanLimits(
+                freeScans   = free.optInt("scans_per_day", 5),
+                plusScans   = plus.optInt("scans_per_day", 50),
+                proScans    = pro.optInt("scans_per_day", 200),
+                freeJournal = free.optInt("max_journal", 20),
+                freeQueue   = free.optInt("max_queue", 3),
+                plusQueue   = plus.optInt("max_queue", 20),
+                proQueue    = pro.optInt("max_queue", -1),
+                freePins    = free.optInt("max_pins", 20),
+                freeAudio   = free.optInt("audio_enabled", 0) != 0,
+                freeShare   = free.optInt("share_enabled", 0) != 0
+            )
+        } catch (e: Exception) {
+            Log.e("LoginActivity", "Failed to fetch plan limits", e)
         }
     }
 

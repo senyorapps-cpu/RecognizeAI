@@ -28,6 +28,18 @@ class SessionManager(context: Context) {
         private const val KEY_SCANS_TODAY = "scans_today"
         private const val KEY_SCAN_DATE = "scan_date"
 
+        // Plan limit keys (fetched from server, stored locally)
+        private const val KEY_LIMIT_FREE_SCANS    = "limit_free_scans"
+        private const val KEY_LIMIT_PLUS_SCANS    = "limit_plus_scans"
+        private const val KEY_LIMIT_PRO_SCANS     = "limit_pro_scans"
+        private const val KEY_LIMIT_FREE_JOURNAL  = "limit_free_journal"
+        private const val KEY_LIMIT_FREE_QUEUE    = "limit_free_queue"
+        private const val KEY_LIMIT_PLUS_QUEUE    = "limit_plus_queue"
+        private const val KEY_LIMIT_PRO_QUEUE     = "limit_pro_queue"
+        private const val KEY_LIMIT_FREE_PINS     = "limit_free_pins"
+        private const val KEY_LIMIT_FREE_AUDIO    = "limit_free_audio"
+        private const val KEY_LIMIT_FREE_SHARE    = "limit_free_share"
+
         const val BASE_URL = "http://mnaks.online:3001"
     }
 
@@ -82,20 +94,47 @@ class SessionManager(context: Context) {
     }
 
     val scanLimit: Int get() = when (plan) {
-        "plus" -> 50
-        "pro" -> 200
-        else -> 5
+        "plus" -> prefs.getInt(KEY_LIMIT_PLUS_SCANS, 50)
+        "pro"  -> prefs.getInt(KEY_LIMIT_PRO_SCANS,  200)
+        else   -> prefs.getInt(KEY_LIMIT_FREE_SCANS, 5)
     }
 
     val maxPendingQueue: Int get() = when (plan) {
-        "plus" -> 20
-        "pro" -> Int.MAX_VALUE
-        else -> 3
+        "pro"  -> { val v = prefs.getInt(KEY_LIMIT_PRO_QUEUE, -1);  if (v == -1) Int.MAX_VALUE else v }
+        "plus" -> { val v = prefs.getInt(KEY_LIMIT_PLUS_QUEUE, 20); if (v == -1) Int.MAX_VALUE else v }
+        else   -> prefs.getInt(KEY_LIMIT_FREE_QUEUE, 3)
     }
 
     val maxJournalEntries: Int get() = when (plan) {
         "plus", "pro" -> Int.MAX_VALUE
-        else -> 20
+        else -> prefs.getInt(KEY_LIMIT_FREE_JOURNAL, 20)
+    }
+
+    val maxMapPins: Int get() = when (plan) {
+        "plus", "pro" -> Int.MAX_VALUE
+        else -> { val v = prefs.getInt(KEY_LIMIT_FREE_PINS, 20); if (v == -1) Int.MAX_VALUE else v }
+    }
+
+    val audioEnabled: Boolean get() = if (isPlus) true else prefs.getBoolean(KEY_LIMIT_FREE_AUDIO, false)
+    val shareEnabled: Boolean get() = if (isPlus) true else prefs.getBoolean(KEY_LIMIT_FREE_SHARE, false)
+
+    fun savePlanLimits(
+        freeScans: Int, plusScans: Int, proScans: Int,
+        freeJournal: Int, freeQueue: Int, plusQueue: Int, proQueue: Int, freePins: Int,
+        freeAudio: Boolean, freeShare: Boolean
+    ) {
+        prefs.edit()
+            .putInt(KEY_LIMIT_FREE_SCANS,   freeScans)
+            .putInt(KEY_LIMIT_PLUS_SCANS,   plusScans)
+            .putInt(KEY_LIMIT_PRO_SCANS,    proScans)
+            .putInt(KEY_LIMIT_FREE_JOURNAL, freeJournal)
+            .putInt(KEY_LIMIT_FREE_QUEUE,   freeQueue)
+            .putInt(KEY_LIMIT_PLUS_QUEUE,   plusQueue)
+            .putInt(KEY_LIMIT_PRO_QUEUE,    proQueue)
+            .putInt(KEY_LIMIT_FREE_PINS,    freePins)
+            .putBoolean(KEY_LIMIT_FREE_AUDIO, freeAudio)
+            .putBoolean(KEY_LIMIT_FREE_SHARE, freeShare)
+            .apply()
     }
 
     // Daily scan counter — resets automatically on a new calendar day

@@ -22,6 +22,7 @@
             android:paddingHorizontal="24dp">
 
             <TextView
+                android:id="@+id/tvGreeting"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/explore_today"
@@ -31,6 +32,7 @@
                 android:letterSpacing="-0.02" />
 
             <TextView
+                android:id="@+id/tvLocationWeather"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"

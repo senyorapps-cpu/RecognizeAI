@@ -95,6 +95,19 @@ class LandmarkDetailActivity : AppCompatActivity() {
             view.setPadding(view.paddingLeft, statusBarHeight + extraPadding, view.paddingRight, view.paddingBottom)
             insets
         }
+        val bottomActionBasePadding = binding.bottomActionBar.paddingBottom
+        val scrollBaseBottomPadding = binding.scrollView.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomActionBar) { view, insets ->
+            val systemNavHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, bottomActionBasePadding + systemNavHeight)
+            binding.scrollView.setPadding(
+                binding.scrollView.paddingLeft,
+                binding.scrollView.paddingTop,
+                binding.scrollView.paddingRight,
+                scrollBaseBottomPadding + systemNavHeight
+            )
+            insets
+        }
 
         loadHeroImage()
         populateFromIntent()
@@ -130,7 +143,8 @@ class LandmarkDetailActivity : AppCompatActivity() {
         binding.tvCapacityValue.text = capacity
 
         binding.tvNarrativeP1.text = narrativeP1
-        binding.tvNarrativeQuote.text = "\u201C$narrativeQuote\u201D"
+        val cleanQuote = narrativeQuote.trim().trimStart('"', '\u201C', '\u2018').trimEnd('"', '\u201D', '\u2019').trim()
+        binding.tvNarrativeQuote.text = "\u201C$cleanQuote\u201D"
         binding.tvNarrativeP2.text = narrativeP2
 
     }

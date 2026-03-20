@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TripAI Admin Dashboard</title>
+<title>SightAI Admin Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -225,6 +225,7 @@ th,td{padding:6px 4px}
     <a href="#" data-tab="logs"><span class="icon">&#9998;</span><span>Logs</span></a>
     <a href="#" data-tab="contacts"><span class="icon">&#9993;</span><span>Contacts</span></a>
     <a href="#" data-tab="database"><span class="icon">&#9735;</span><span>Database</span></a>
+    <a href="#" data-tab="plans"><span class="icon">&#9673;</span><span>Plans</span></a>
   </nav>
   <div class="sidebar-footer">
     <button onclick="doLogout()">Logout</button>
@@ -363,6 +364,11 @@ th,td{padding:6px 4px}
   </div>
 
   <!-- DATABASE TAB -->
+  <div class="tab-content" id="tab-plans">
+    <div class="main-header"><h1>Subscription Plans</h1></div>
+    <div id="plansContainer"></div>
+  </div>
+
   <div class="tab-content" id="tab-database">
     <div class="main-header"><h1>Database</h1></div>
     <div class="monitor-grid" id="databaseInfo"></div>
@@ -433,8 +439,8 @@ function authHeaders() {
   return { Authorization: "Bearer " + token, "Content-Type": "application/json" };
 }
 
-async function apiFetch(path) {
-  const r = await fetch(API + path, { headers: authHeaders() });
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } });
   if (r.status === 401) { doLogout(); throw new Error("Unauthorized"); }
   return r.json();
 }
@@ -472,6 +478,7 @@ function loadTab(tab) {
     case "logs": loadLogs(); break;
     case "contacts": loadContacts(); break;
     case "database": loadDatabase(); break;
+      case "plans": loadPlans(); break;
   }
 }
 
@@ -836,6 +843,63 @@ function closeModal() {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 
 // ── Init ─────────────────────────────────────────────────────
+
+// ── Plans ─────────────────────────────────────────────────────
+async function loadPlans() {
+  try {
+    const plans = await apiFetch('/api/admin/plan-limits');
+    const labels = { free: 'Explorer (Free)', plus: 'Traveler ($3.99/mo)', pro: 'Globetrotter ($7.99/mo)' };
+    const fields = [
+      { key: 'scans_per_day', label: 'Scans / day', hint: '' },
+      { key: 'max_journal',   label: 'Max journal entries', hint: '-1 = unlimited' },
+      { key: 'max_queue',     label: 'Max offline queue',   hint: '-1 = unlimited' },
+      { key: 'max_pins',      label: 'Max map pins',        hint: '-1 = unlimited' },
+    ];
+    const boolFields = [
+      { key: 'audio_enabled', label: 'Audio narration' },
+      { key: 'share_enabled', label: 'Share card' },
+    ];
+    document.getElementById('plansContainer').innerHTML = plans.map(p => `
+      <div class="monitor-card" style="margin-bottom:20px">
+        <h3 style="margin-bottom:16px">${labels[p.plan] || p.plan}</h3>
+        ${fields.map(f => `
+          <div class="monitor-item" style="margin-bottom:10px">
+            <span class="label">${f.label}${f.hint ? ' <small style=color:#888>(\'+f.hint+\')</small>' : ''}</span>
+            <input id="${p.plan}_${f.key}" type="number" value="${p[f.key]}"
+              style="width:90px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px">
+          </div>
+        `).join('')}
+        ${boolFields.map(f => `
+          <div class="monitor-item" style="margin-bottom:10px">
+            <span class="label">${f.label}</span>
+            <input id="${p.plan}_${f.key}" type="checkbox" ${p[f.key] ? 'checked' : ''}
+              style="width:18px;height:18px;cursor:pointer">
+          </div>
+        `).join('')}
+        <button onclick="savePlan('${p.plan}')"
+          style="margin-top:12px;padding:8px 24px;background:#1C5B9E;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px">
+          Save ${labels[p.plan] || p.plan}
+        </button>
+      </div>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function savePlan(plan) {
+  const get = id => document.getElementById(id);
+  const body = {
+    scans_per_day: parseInt(get(`${plan}_scans_per_day`).value),
+    max_journal:   parseInt(get(`${plan}_max_journal`).value),
+    max_queue:     parseInt(get(`${plan}_max_queue`).value),
+    max_pins:      parseInt(get(`${plan}_max_pins`).value),
+    audio_enabled: get(`${plan}_audio_enabled`).checked,
+    share_enabled: get(`${plan}_share_enabled`).checked,
+  };
+  try {
+    await apiFetch(`/api/admin/plan-limits/${plan}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    alert(`${plan} plan saved successfully!`);
+  } catch(e) { alert('Save failed: ' + e.message); }
+}
 checkAuth();
 </script>
 </body>

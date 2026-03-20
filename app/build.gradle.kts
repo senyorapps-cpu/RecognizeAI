@@ -4,23 +4,31 @@ plugins {
 
 android {
     namespace = "com.example.recognizeai"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.recognizeai"
+        applicationId = "online.mnaks.sightai"
         minSdk = 31
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 4
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("../main-keystore.jks")
+            storePassword = "AAKK1986ak\$\$"
+            keyAlias = "master"
+            keyPassword = "AAKK1986ak\$\$"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

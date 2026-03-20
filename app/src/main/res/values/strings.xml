@@ -138,6 +138,9 @@
     <string name="profile_support_desc">Our support team is available 24/7</string>
     <string name="profile_contact_us">Contact Us</string>
     <string name="profile_logout">Logout Account</string>
+    <string name="profile_sign_in">Sign In / Create Account</string>
+    <string name="guest_sign_in_title">Sign in to track your journey</string>
+    <string name="guest_sign_in_desc">Create a free account to save your discoveries across devices and unlock more features.</string>
 
     <!-- Map -->
     <string name="map_explore_ai">Explore with AI</string>

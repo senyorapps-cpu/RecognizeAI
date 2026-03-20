@@ -9,6 +9,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.example.recognizeai.databinding.FragmentProfileBinding
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +44,15 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         session = SessionManager(requireContext())
+
+        // Keep scroll content above the bottom nav bar
+        val baseScrollPadding = binding.root.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, baseScrollPadding + navBarHeight)
+            insets
+        }
+
         loadUserInfo()
         loadStats()
         updateLanguageDisplay()
@@ -60,9 +71,18 @@ class ProfileFragment : Fragment() {
         if (session.isGoogle) {
             binding.tvGreeting.text = getString(R.string.profile_hello, session.displayName)
             binding.tvSubtitle.text = session.email.ifEmpty { getString(R.string.profile_subtitle_google) }
+            binding.statsRow.visibility = View.VISIBLE
+            binding.signInPrompt.visibility = View.GONE
+            binding.settingSubscription.visibility = View.VISIBLE
+            binding.tvLogoutText.text = getString(R.string.profile_logout)
         } else {
+            // Guest
             binding.tvGreeting.text = getString(R.string.profile_hello_guest)
             binding.tvSubtitle.text = getString(R.string.profile_subtitle_guest)
+            binding.statsRow.visibility = View.GONE
+            binding.signInPrompt.visibility = View.VISIBLE
+            binding.settingSubscription.visibility = View.GONE
+            binding.tvLogoutText.text = getString(R.string.profile_sign_in)
         }
         binding.tvPlanBadge.text = when (session.plan) {
             "plus" -> "✦ Traveler"
@@ -158,10 +178,17 @@ class ProfileFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.btnLogout.setOnClickListener {
-            session.logout()
-            val intent = Intent(requireContext(), OnboardingActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
+            if (session.isGuest) {
+                session.logout()
+                val intent = Intent(requireContext(), LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+            } else {
+                session.logout()
+                val intent = Intent(requireContext(), OnboardingActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+            }
         }
 
         binding.btnContactUs.setOnClickListener {
@@ -174,6 +201,7 @@ class ProfileFragment : Fragment() {
                 session.language = lang.code
                 LocaleHelper.setLocale(lang.code)
                 saveLanguageToServer(lang.code)
+                requireActivity().recreate()
             }
             sheet.show(parentFragmentManager, LanguageBottomSheet.TAG)
         }

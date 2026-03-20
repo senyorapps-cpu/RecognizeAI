@@ -12,7 +12,8 @@
         android:fillViewport="true"
         android:clipToPadding="false"
         android:overScrollMode="never"
-        android:paddingBottom="80dp">
+        android:id="@+id/scrollView"
+        android:paddingBottom="160dp">
 
         <LinearLayout
             android:layout_width="match_parent"
