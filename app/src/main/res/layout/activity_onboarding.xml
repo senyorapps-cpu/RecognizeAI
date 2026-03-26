@@ -54,7 +54,7 @@
         android:text="@string/skip"
         android:textColor="@color/deep_blue"
         android:textSize="14sp"
-        android:fontFamily="@font/inter_bold"
+        android:fontFamily="@font/plus_jakarta_sans_bold"
         android:letterSpacing="0.15"
         android:textAllCaps="true" />
 

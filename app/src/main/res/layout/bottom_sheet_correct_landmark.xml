@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="32dp">
+
+    <!-- Handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="20dp"
+        android:background="@color/deep_blue_20" />
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/correct_landmark_title"
+        android:textColor="@color/deep_blue"
+        android:textSize="18sp"
+        android:fontFamily="@font/plus_jakarta_sans_bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Search row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/etLandmarkSearch"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/bg_dialog_button_outline"
+            android:paddingHorizontal="14dp"
+            android:hint="@string/correct_search_hint"
+            android:textSize="14sp"
+            android:fontFamily="@font/plus_jakarta_sans"
+            android:textColor="@color/deep_blue"
+            android:textColorHint="@color/deep_blue_50"
+            android:inputType="text"
+            android:imeOptions="actionSearch"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/btnSearch"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_view_details_button"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:text="@string/correct_search_btn"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:fontFamily="@font/plus_jakarta_sans_semibold" />
+
+    </LinearLayout>
+
+    <!-- Status text (searching / not found) -->
+    <TextView
+        android:id="@+id/tvSearchStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="@color/deep_blue_50"
+        android:textSize="13sp"
+        android:fontFamily="@font/plus_jakarta_sans"
+        android:visibility="gone" />
+
+    <!-- Preview card -->
+    <LinearLayout
+        android:id="@+id/previewCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_dialog"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvPreviewName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/deep_blue"
+            android:textSize="16sp"
+            android:fontFamily="@font/plus_jakarta_sans_bold" />
+
+        <TextView
+            android:id="@+id/tvPreviewLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/deep_blue_50"
+            android:textSize="13sp"
+            android:fontFamily="@font/plus_jakarta_sans" />
+
+        <TextView
+            android:id="@+id/tvPreviewSnippet"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/deep_blue_70"
+            android:textSize="13sp"
+            android:fontFamily="@font/plus_jakarta_sans"
+            android:lineSpacingMultiplier="1.4"
+            android:maxLines="3"
+            android:ellipsize="end" />
+
+        <!-- Confirm button -->
+        <TextView
+            android:id="@+id/btnConfirmCorrect"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_save_journal_button"
+            android:gravity="center"
+            android:text="@string/correct_confirm_btn"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:fontFamily="@font/plus_jakarta_sans_semibold" />
+
+    </LinearLayout>
+
+</LinearLayout>

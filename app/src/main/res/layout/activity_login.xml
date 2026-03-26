@@ -56,7 +56,7 @@
             android:text="@string/sign_in"
             android:textColor="@color/deep_blue"
             android:textSize="36sp"
-            android:fontFamily="@font/inter_bold"
+            android:fontFamily="@font/plus_jakarta_sans_bold"
             android:gravity="center"
             android:letterSpacing="-0.02" />
 
@@ -68,7 +68,7 @@
             android:text="@string/welcome_back"
             android:textColor="@color/deep_blue_50"
             android:textSize="14sp"
-            android:fontFamily="@font/inter_medium" />
+            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
         <!-- Buttons -->
         <LinearLayout
@@ -108,7 +108,7 @@
                         android:text="@string/continue_with_google"
                         android:textColor="@color/deep_blue"
                         android:textSize="18sp"
-                        android:fontFamily="@font/inter_semibold" />
+                        android:fontFamily="@font/plus_jakarta_sans_semibold" />
 
                 </LinearLayout>
 
@@ -145,7 +145,7 @@
                         android:text="@string/continue_as_guest"
                         android:textColor="@color/deep_blue"
                         android:textSize="18sp"
-                        android:fontFamily="@font/inter_bold" />
+                        android:fontFamily="@font/plus_jakarta_sans_bold" />
 
                 </LinearLayout>
 
@@ -189,7 +189,7 @@
                 android:text="@string/language_english"
                 android:textColor="@color/deep_blue_50"
                 android:textSize="14sp"
-                android:fontFamily="@font/inter_medium" />
+                android:fontFamily="@font/plus_jakarta_sans_medium" />
 
         </LinearLayout>
 
@@ -207,7 +207,7 @@
                 android:text="@string/privacy_policy"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="12sp"
-                android:fontFamily="@font/inter_medium" />
+                android:fontFamily="@font/plus_jakarta_sans_medium" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -223,7 +223,7 @@
                 android:text="@string/terms_of_service"
                 android:textColor="@color/deep_blue_20"
                 android:textSize="12sp"
-                android:fontFamily="@font/inter_medium" />
+                android:fontFamily="@font/plus_jakarta_sans_medium" />
 
         </LinearLayout>
 

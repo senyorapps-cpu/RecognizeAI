@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:text="Daily Limit Reached"
         android:textSize="18sp"
-        android:fontFamily="@font/inter_bold"
+        android:fontFamily="@font/plus_jakarta_sans_bold"
         android:textColor="@color/deep_blue"
         android:layout_gravity="center_horizontal" />
 
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:textSize="14sp"
-        android:fontFamily="@font/inter"
+        android:fontFamily="@font/plus_jakarta_sans"
         android:textColor="@color/deep_blue_70"
         android:gravity="center"
         android:lineSpacingMultiplier="1.4" />
@@ -38,7 +38,7 @@
         android:text="Upgrade Plan"
         android:textColor="@color/white"
         android:textSize="15sp"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/plus_jakarta_sans_semibold"
         android:textAllCaps="false" />
 
     <TextView
@@ -50,7 +50,7 @@
         android:text="Maybe Later"
         android:textColor="@color/deep_blue_50"
         android:textSize="14sp"
-        android:fontFamily="@font/inter_medium"
+        android:fontFamily="@font/plus_jakarta_sans_medium"
         android:textAllCaps="false" />
 
 </LinearLayout>

@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Dark mode background colors -->
-    <color name="dark_background">#FF121212</color>
-    <color name="dark_surface">#FF1E1E1E</color>
-    <color name="dark_card">#FF2A2A2A</color>
+    <color name="dark_background">#FF000000</color>
+    <color name="dark_surface">#FF0F0F0F</color>
+    <color name="dark_card">#FF1A1A1A</color>
 
     <!-- Override colors used as backgrounds in layouts -->
-    <color name="white">#FF1E1E1E</color>
+    <color name="white">#FF0F0F0F</color>
     <color name="black">#FFFFFFFF</color>
 
-    <!-- Text colors — invert for readability -->
-    <color name="deep_blue">#FFB8D4F0</color>
-    <color name="deep_blue_70">#B3B8D4F0</color>
-    <color name="deep_blue_50">#80B8D4F0</color>
-    <color name="deep_blue_20">#33B8D4F0</color>
-    <color name="deep_blue_10">#1AB8D4F0</color>
-    <color name="deep_blue_5">#0DB8D4F0</color>
+    <!-- Text colors — warm gold-tinted white for Night Explorer -->
+    <color name="deep_blue">#FFEAD5A0</color>
+    <color name="deep_blue_70">#B3EAD5A0</color>
+    <color name="deep_blue_50">#80EAD5A0</color>
+    <color name="deep_blue_20">#33EAD5A0</color>
+    <color name="deep_blue_10">#1AEAD5A0</color>
+    <color name="deep_blue_5">#0DEAD5A0</color>
 
     <!-- Keep gold accent the same -->
     <color name="gold_accent">#FFDFC623</color>
@@ -29,11 +29,11 @@
     <color name="slate_900">#FFE2E8F0</color>
 
     <!-- Semantic colors (dark overrides) -->
-    <color name="surface">#FF1E1E1E</color>
-    <color name="surface_80">#CC1E1E1E</color>
-    <color name="surface_90">#E61E1E1E</color>
-    <color name="surface_95">#F21E1E1E</color>
-    <color name="background_secondary">#FF2A2A2A</color>
+    <color name="surface">#FF0F0F0F</color>
+    <color name="surface_80">#CC0F0F0F</color>
+    <color name="surface_90">#E60F0F0F</color>
+    <color name="surface_95">#F20F0F0F</color>
+    <color name="background_secondary">#FF1A1A1A</color>
     <color name="stroke_subtle">#FF333333</color>
     <color name="stroke_glass">#40333333</color>
     <color name="hero_background">#FF000000</color>

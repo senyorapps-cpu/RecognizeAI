@@ -109,7 +109,7 @@
                     android:textSize="12sp"
                     android:textAllCaps="true"
                     android:letterSpacing="0.25"
-                    android:fontFamily="@font/inter_bold" />
+                    android:fontFamily="@font/plus_jakarta_sans_bold" />
 
                 <!-- Title -->
                 <TextView
@@ -121,7 +121,7 @@
                     android:text="@string/the_colosseum"
                     android:textColor="@color/deep_blue"
                     android:textSize="30sp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/plus_jakarta_sans_semibold"
                     android:gravity="center" />
 
                 <!-- 5 gold stars -->
@@ -182,7 +182,7 @@
                     android:layout_marginTop="8dp"
                     android:textColor="@color/gold_accent"
                     android:textSize="15sp"
-                    android:fontFamily="@font/inter_medium"
+                    android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:visibility="gone" />
 
                 <!-- Tap to rate prompt -->
@@ -195,7 +195,7 @@
                     android:text="@string/tap_to_rate"
                     android:textColor="@color/deep_blue_50"
                     android:textSize="13sp"
-                    android:fontFamily="@font/inter_medium"
+                    android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:alpha="0"
                     android:visibility="visible" />
 
@@ -222,7 +222,7 @@
                         android:text="@string/colosseum_location"
                         android:textColor="@color/deep_blue_50"
                         android:textSize="14sp"
-                        android:fontFamily="@font/inter" />
+                        android:fontFamily="@font/plus_jakarta_sans" />
 
                 </LinearLayout>
 
@@ -270,7 +270,7 @@
                             android:textSize="11sp"
                             android:textAllCaps="true"
                             android:letterSpacing="0.08"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                         <TextView
                             android:id="@+id/tvYearBuiltValue"
@@ -280,7 +280,7 @@
                             android:text="@string/year_built_value"
                             android:textColor="@color/deep_blue"
                             android:textSize="15sp"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                     </LinearLayout>
 
@@ -310,7 +310,7 @@
                             android:textSize="11sp"
                             android:textAllCaps="true"
                             android:letterSpacing="0.08"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                         <TextView
                             android:id="@+id/tvStatusValue"
@@ -320,7 +320,7 @@
                             android:text="@string/unesco_site"
                             android:textColor="@color/deep_blue"
                             android:textSize="15sp"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                     </LinearLayout>
 
@@ -360,7 +360,7 @@
                             android:textSize="11sp"
                             android:textAllCaps="true"
                             android:letterSpacing="0.08"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                         <TextView
                             android:id="@+id/tvArchitectValue"
@@ -370,7 +370,7 @@
                             android:text="@string/flavian_dynasty"
                             android:textColor="@color/deep_blue"
                             android:textSize="15sp"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                     </LinearLayout>
 
@@ -400,7 +400,7 @@
                             android:textSize="11sp"
                             android:textAllCaps="true"
                             android:letterSpacing="0.08"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                         <TextView
                             android:id="@+id/tvCapacityValue"
@@ -410,7 +410,7 @@
                             android:text="@string/capacity_value"
                             android:textColor="@color/deep_blue"
                             android:textSize="15sp"
-                            android:fontFamily="@font/inter_medium" />
+                            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
                     </LinearLayout>
 
@@ -452,7 +452,7 @@
                         android:text="@string/listen_story"
                         android:textColor="@color/white"
                         android:textSize="15sp"
-                        android:fontFamily="@font/inter_semibold" />
+                        android:fontFamily="@font/plus_jakarta_sans_semibold" />
 
                 </LinearLayout>
 
@@ -465,7 +465,7 @@
                     android:text="@string/colosseum_text_1"
                     android:textColor="@color/deep_blue_70"
                     android:textSize="15sp"
-                    android:fontFamily="@font/inter"
+                    android:fontFamily="@font/plus_jakarta_sans"
                     android:lineSpacingMultiplier="1.5" />
 
                 <!-- Quote block with gold left border -->
@@ -490,7 +490,7 @@
                         android:text="@string/colosseum_quote"
                         android:textColor="@color/deep_blue_70"
                         android:textSize="15sp"
-                        android:fontFamily="@font/inter_medium"
+                        android:fontFamily="@font/plus_jakarta_sans_medium"
                         android:textStyle="italic"
                         android:lineSpacingMultiplier="1.5" />
 
@@ -504,11 +504,25 @@
                     android:text="@string/colosseum_text_2"
                     android:textColor="@color/deep_blue_70"
                     android:textSize="15sp"
-                    android:fontFamily="@font/inter"
+                    android:fontFamily="@font/plus_jakarta_sans"
                     android:lineSpacingMultiplier="1.5" />
 
             </LinearLayout>
 
+
+            <!-- Wrong landmark link -->
+            <TextView
+                android:id="@+id/btnWrongLandmark"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:text="@string/wrong_landmark"
+                android:textColor="@color/deep_blue_50"
+                android:textSize="13sp"
+                android:fontFamily="@font/plus_jakarta_sans_medium"
+                android:paddingVertical="8dp"
+                android:paddingHorizontal="16dp" />
 
             <!-- Bottom spacer -->
             <View
@@ -553,7 +567,7 @@
                 android:text="@string/retake_photo"
                 android:textColor="@color/gold_accent"
                 android:textSize="15sp"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/plus_jakarta_sans_semibold"
                 android:textAllCaps="false" />
 
             <!-- Save to Journal (deep blue gradient) -->
@@ -581,7 +595,7 @@
                     android:text="@string/save_to_journal"
                     android:textColor="@color/white"
                     android:textSize="16sp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/plus_jakarta_sans_semibold"
                     android:textAllCaps="false"
                     android:letterSpacing="0.03" />
 

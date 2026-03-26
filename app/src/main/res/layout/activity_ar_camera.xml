@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- Camera Preview -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/cameraPreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop" />
+
+    <!-- Top status bar -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#80000000"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="48dp"
+        android:paddingBottom="16dp"
+        android:paddingHorizontal="16dp">
+
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close"
+            android:src="@drawable/ic_close"
+            android:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/tvArStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/plus_jakarta_sans_medium"
+            android:gravity="center"
+            android:text="@string/ar_scanning"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvArPlan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ar_plan_badge"
+            android:fontFamily="@font/plus_jakarta_sans_semibold"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:textColor="@color/white"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+    <!-- Viewfinder frame + hint (centered) -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <!-- Corner-bracket scanning frame -->
+        <FrameLayout
+            android:id="@+id/scanFrame"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:clipChildren="true">
+
+            <!-- Top-left bracket -->
+            <FrameLayout
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|start">
+                <View android:layout_width="28dp" android:layout_height="2dp" android:background="#DDFFFFFF" />
+                <View android:layout_width="2dp" android:layout_height="28dp" android:background="#DDFFFFFF" />
+            </FrameLayout>
+
+            <!-- Top-right bracket -->
+            <FrameLayout
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|end">
+                <View android:layout_width="28dp" android:layout_height="2dp" android:layout_gravity="top|end" android:background="#DDFFFFFF" />
+                <View android:layout_width="2dp" android:layout_height="28dp" android:layout_gravity="top|end" android:background="#DDFFFFFF" />
+            </FrameLayout>
+
+            <!-- Bottom-left bracket -->
+            <FrameLayout
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="bottom|start">
+                <View android:layout_width="28dp" android:layout_height="2dp" android:layout_gravity="bottom|start" android:background="#DDFFFFFF" />
+                <View android:layout_width="2dp" android:layout_height="28dp" android:layout_gravity="bottom|start" android:background="#DDFFFFFF" />
+            </FrameLayout>
+
+            <!-- Bottom-right bracket -->
+            <FrameLayout
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="bottom|end">
+                <View android:layout_width="28dp" android:layout_height="2dp" android:layout_gravity="bottom|end" android:background="#DDFFFFFF" />
+                <View android:layout_width="2dp" android:layout_height="28dp" android:layout_gravity="bottom|end" android:background="#DDFFFFFF" />
+            </FrameLayout>
+
+            <!-- Sweep line (animates top → bottom) -->
+            <View
+                android:id="@+id/scanLine"
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:layout_gravity="top"
+                android:background="@drawable/bg_ar_scan_line" />
+
+        </FrameLayout>
+
+        <!-- Hint text below frame -->
+        <TextView
+            android:id="@+id/tvScanHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/plus_jakarta_sans_medium"
+            android:text="@string/ar_point_at_landmark"
+            android:textColor="#CCFFFFFF"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!-- Bottom overlay card (hidden until landmark detected) -->
+    <LinearLayout
+        android:id="@+id/overlayCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#CC0A1628"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <!-- Landmark thumbnail -->
+        <ImageView
+            android:id="@+id/imgArThumbnail"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:scaleType="centerCrop"
+            android:background="#33FFFFFF"
+            android:importantForAccessibility="no" />
+
+        <!-- Text content -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvArName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tvArLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:alpha="0.7"
+                android:fontFamily="@font/plus_jakarta_sans"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/btnViewDetails"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_ar_details_btn"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="@font/plus_jakarta_sans_semibold"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="@string/ar_view_full_details"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

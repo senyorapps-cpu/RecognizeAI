@@ -35,4 +35,5 @@
     <color name="drag_handle_color">#FFE2E8F0</color>
     <color name="nearby_stroke">#FFF3F4F6</color>
     <color name="toast_stroke">#33FFFFFF</color>
+    <color name="paper_background">#FFFDFCF8</color>
 </resources>

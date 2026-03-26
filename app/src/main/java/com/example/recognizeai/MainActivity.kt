@@ -25,7 +25,6 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,17 +66,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val requestNotificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    private val requestBackgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            // Permission granted — geofences will be registered next time landmarks load
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Re-apply saved locale if lost (e.g. after reinstall) — may trigger recreation
         LocaleHelper.initFromSession(this)
 
-        // Apply dark mode preference (only if not already matching to avoid recreation loop)
-        val session = SessionManager(this)
-        val targetMode = if (session.isDarkMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-        if (AppCompatDelegate.getDefaultNightMode() != targetMode) {
-            AppCompatDelegate.setDefaultNightMode(targetMode)
-        }
+        ThemeHelper.applyToActivity(this)
+
+        MemoryWorker.schedule(this)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -148,6 +152,26 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         checkAndShowSyncDialog()
         refreshPlanLimits()
+        requestGeofencePermissionsIfNeeded()
+    }
+
+    private fun requestGeofencePermissionsIfNeeded() {
+        // Android 13+: ask for notification permission
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+        }
+        // Android 10+: background location must be requested separately, after fine location
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            val background = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (fine && !background) {
+                requestBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+        }
     }
 
     private fun refreshPlanLimits() {

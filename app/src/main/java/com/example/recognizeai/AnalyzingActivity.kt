@@ -357,7 +357,7 @@ class AnalyzingActivity : AppCompatActivity() {
             original
         }
 
-        val maxEdge = 1200
+        val maxEdge = 800
         val scale = if (rotated.width > rotated.height) {
             maxEdge.toFloat() / rotated.width
         } else {
@@ -379,7 +379,7 @@ class AnalyzingActivity : AppCompatActivity() {
         dir.mkdirs()
         val file = File(dir, "compressed_${System.currentTimeMillis()}.jpg")
         FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 65, out)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
         }
         if (bitmap !== rotated) bitmap.recycle()
         rotated.recycle()
@@ -513,6 +513,7 @@ class AnalyzingActivity : AppCompatActivity() {
                         putExtra("nearby3_name", json.optString("nearby3_name", ""))
                         putExtra("nearby3_category", json.optString("nearby3_category", ""))
                         putExtra("language", analysisLang)
+                        putExtra("new_badges", json.optJSONArray("new_badges")?.toString() ?: "[]")
                     }
                     // Save to local storage for offline/guest access
                     val prefs = getSharedPreferences("recognizeai_landmarks", MODE_PRIVATE)

@@ -159,4 +159,15 @@
     <!-- Onboarding Animation -->
     <string name="scanning">Scannen</string>
     <string name="eiffel_tower_paris">Eiffelturm, Paris</string>
+    <string name="notif_nearby_title">Sie sind in der Nähe von %s</string>
+    <string name="notif_nearby_body">Tippen, um Ihre gespeicherte Sehenswürdigkeit zu sehen</string>
+    <!-- AR Mode -->
+    <string name="ar_mode_title">AR Live-Scan</string>
+    <string name="ar_mode_subtitle">Auf ein Wahrzeichen zeigen</string>
+    <string name="ar_scanning">Scannen…</string>
+    <string name="ar_landmark_detected">Sehenswürdigkeit erkannt!</string>
+    <string name="ar_point_at_landmark">Auf ein Wahrzeichen zeigen</string>
+    <string name="ar_hold_still">Bitte stillhalten, analysiere…</string>
+    <string name="ar_view_full_details">Details anzeigen →</string>
+    <string name="ar_no_landmark">Keine Sehenswürdigkeit erkannt</string>
 </resources>

@@ -24,6 +24,7 @@ class SessionManager(context: Context) {
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_DARK_MODE = "dark_mode"
+        private const val KEY_APP_THEME = "app_theme"
         private const val KEY_PLAN = "plan"
         private const val KEY_SCANS_TODAY = "scans_today"
         private const val KEY_SCAN_DATE = "scan_date"
@@ -71,9 +72,13 @@ class SessionManager(context: Context) {
         get() = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
         set(value) { prefs.edit().putString(KEY_LANGUAGE, value).commit() }
 
+    var appTheme: String
+        get() = prefs.getString(KEY_APP_THEME, "default") ?: "default"
+        set(value) { prefs.edit().putString(KEY_APP_THEME, value).apply() }
+
     var isDarkMode: Boolean
-        get() = prefs.getBoolean(KEY_DARK_MODE, false)
-        set(value) { prefs.edit().putBoolean(KEY_DARK_MODE, value).apply() }
+        get() = appTheme == "night"
+        set(value) { appTheme = if (value) "night" else "default" }
 
     val isGuest: Boolean get() = authType == "guest"
     val isGoogle: Boolean get() = authType == "google"

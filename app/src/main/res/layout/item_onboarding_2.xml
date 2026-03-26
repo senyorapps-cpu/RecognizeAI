@@ -132,7 +132,7 @@
                     android:text="@string/rome"
                     android:textColor="@color/deep_blue"
                     android:textSize="10sp"
-                    android:fontFamily="@font/inter_bold" />
+                    android:fontFamily="@font/plus_jakarta_sans_bold" />
 
             </LinearLayout>
 
@@ -205,7 +205,7 @@
                     android:text="@string/paris"
                     android:textColor="@color/deep_blue"
                     android:textSize="10sp"
-                    android:fontFamily="@font/inter_bold" />
+                    android:fontFamily="@font/plus_jakarta_sans_bold" />
 
             </LinearLayout>
 
@@ -301,7 +301,7 @@
             android:text="@string/onboarding_title_2"
             android:textColor="@color/deep_blue"
             android:textSize="36sp"
-            android:fontFamily="@font/inter_bold"
+            android:fontFamily="@font/plus_jakarta_sans_bold"
             android:gravity="center"
             android:letterSpacing="-0.02"
             android:lineSpacingMultiplier="1.1" />
@@ -313,7 +313,7 @@
             android:text="@string/onboarding_desc_2"
             android:textColor="@color/deep_blue_70"
             android:textSize="16sp"
-            android:fontFamily="@font/inter_medium"
+            android:fontFamily="@font/plus_jakarta_sans_medium"
             android:gravity="center"
             android:lineSpacingMultiplier="1.4" />
 
@@ -368,7 +368,7 @@
                     android:text="@string/next"
                     android:textColor="@color/deep_blue"
                     android:textSize="20sp"
-                    android:fontFamily="@font/inter_bold"
+                    android:fontFamily="@font/plus_jakarta_sans_bold"
                     android:textAllCaps="true"
                     android:letterSpacing="0.05" />
 

@@ -34,7 +34,9 @@ import android.widget.PopupWindow
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -58,6 +60,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -67,6 +70,8 @@ class LandmarkDetailActivity : AppCompatActivity() {
     private var currentRating = 0
     private lateinit var stars: List<ImageView>
     private var retakePhotoUri: Uri? = null
+    private var fetchedArData: JSONObject? = null
+    private var isFavorited = false
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
     private var isSpeaking = false
@@ -109,18 +114,33 @@ class LandmarkDetailActivity : AppCompatActivity() {
             insets
         }
 
+        isFavorited = intent.getIntExtra("is_favorited", 0) != 0
         loadHeroImage()
         populateFromIntent()
         setupClickListeners()
         setupStarRating()
         setupTextToSpeech()
         applyPlanRestrictions()
+        updateFavoriteIcon(animated = false)
+
+        // Show badge unlocks passed from AnalyzingActivity
+        val badgesJson = intent.getStringExtra("new_badges")
+        if (!badgesJson.isNullOrEmpty() && badgesJson != "[]") {
+            try { showNewBadges(org.json.JSONArray(badgesJson)) } catch (_: Exception) {}
+        }
 
         // Hide bottom action bar when opened from saved page or home last capture
         val fromSaved = intent.getBooleanExtra("from_saved", false)
         val fromHome = intent.getBooleanExtra("from_home", false)
+        val fromAr = intent.getBooleanExtra("from_ar", false)
         if (fromSaved || fromHome) {
             binding.bottomActionBar.visibility = View.GONE
+        }
+
+        // If opened from AR, fetch full landmark details from server
+        if (fromAr) {
+            val name = intent.getStringExtra("name") ?: ""
+            if (name.isNotEmpty()) fetchArLandmarkInfo(name)
         }
     }
 
@@ -149,18 +169,144 @@ class LandmarkDetailActivity : AppCompatActivity() {
 
     }
 
+    private fun fetchArLandmarkInfo(name: String) {
+        val session = SessionManager(this)
+        val lang = session.language.ifEmpty { "en" }
+        val encodedName = URLEncoder.encode(name, "UTF-8")
+
+        // Show loading state
+        binding.tvNarrativeP1.text = "Loading…"
+        binding.tvNarrativeQuote.text = ""
+        binding.tvNarrativeP2.text = ""
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/landmark-info?name=$encodedName&lang=$lang&device_id=${session.deviceId}")
+                    .get()
+                    .build()
+                val response = httpClient.newCall(request).execute()
+                val body = response.body?.string() ?: return@launch
+                val json = JSONObject(body)
+
+                withContext(Dispatchers.Main) {
+                    if (!json.has("narrative_p1")) return@withContext
+
+                    fetchedArData = json
+
+                    // Load Wikipedia hero image (guard against JSON null)
+                    val photoUrl = if (!json.isNull("photo_url")) json.optString("photo_url", "") else ""
+                    if (photoUrl.isNotEmpty()) {
+                        Glide.with(this@LandmarkDetailActivity)
+                            .load(photoUrl)
+                            .centerCrop()
+                            .into(binding.imgHero)
+                    }
+
+                    // Update meta fields
+                    val yearBuilt = json.optString("year_built", "")
+                    val status = json.optString("status", "")
+                    val architect = json.optString("architect", "")
+                    val capacity = json.optString("capacity", "")
+                    if (yearBuilt.isNotEmpty()) binding.tvYearBuiltValue.text = yearBuilt
+                    if (status.isNotEmpty()) binding.tvStatusValue.text = status
+                    if (architect.isNotEmpty()) binding.tvArchitectValue.text = architect
+                    if (capacity.isNotEmpty()) binding.tvCapacityValue.text = capacity
+
+                    // Update narrative
+                    val p1 = json.optString("narrative_p1", "")
+                    val quote = json.optString("narrative_quote", "").trim()
+                        .trimStart('"', '\u201C', '\u2018').trimEnd('"', '\u201D', '\u2019').trim()
+                    val p2 = json.optString("narrative_p2", "")
+                    binding.tvNarrativeP1.text = p1
+                    binding.tvNarrativeQuote.text = if (quote.isNotEmpty()) "\u201C$quote\u201D" else ""
+                    binding.tvNarrativeP2.text = p2
+                }
+            } catch (e: Exception) {
+                Log.e("LandmarkDetail", "AR info fetch failed", e)
+                withContext(Dispatchers.Main) {
+                    binding.tvNarrativeP1.text = ""
+                }
+            }
+        }
+    }
+
+    private fun saveFromAr() {
+        val session = SessionManager(this)
+        val data = fetchedArData
+        val name = intent.getStringExtra("name") ?: return
+
+        binding.tvSaveJournalText.text = getString(R.string.saving)
+        binding.btnSaveJournal.isEnabled = false
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val body = JSONObject().apply {
+                    put("device_id", session.deviceId)
+                    put("user_id", if (session.userId > 0) session.userId else JSONObject.NULL)
+                    put("name", name)
+                    put("location", intent.getStringExtra("location") ?: "")
+                    put("year_built", data?.optString("year_built") ?: intent.getStringExtra("year_built") ?: "")
+                    put("status", data?.optString("status") ?: "")
+                    put("architect", data?.optString("architect") ?: "")
+                    put("capacity", data?.optString("capacity") ?: "")
+                    put("narrative_p1", data?.optString("narrative_p1") ?: "")
+                    put("narrative_quote", data?.optString("narrative_quote") ?: "")
+                    put("narrative_p2", data?.optString("narrative_p2") ?: "")
+                    put("nearby1_name", data?.optString("nearby1_name") ?: "")
+                    put("nearby1_category", data?.optString("nearby1_category") ?: "")
+                    put("nearby2_name", data?.optString("nearby2_name") ?: "")
+                    put("nearby2_category", data?.optString("nearby2_category") ?: "")
+                    put("nearby3_name", data?.optString("nearby3_name") ?: "")
+                    put("nearby3_category", data?.optString("nearby3_category") ?: "")
+                    put("language", session.language.ifEmpty { "en" })
+                    put("rating", currentRating)
+                }
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/landmarks/save-from-ar")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+                val response = httpClient.newCall(request).execute()
+                val json = JSONObject(response.body?.string() ?: "{}")
+
+                withContext(Dispatchers.Main) {
+                    if (json.optBoolean("success", false)) {
+                        showNewBadges(json.optJSONArray("new_badges"))
+                        binding.tvSaveJournalText.text = getString(R.string.saved)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            val nav = Intent(this@LandmarkDetailActivity, MainActivity::class.java)
+                            nav.putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_SAVED)
+                            nav.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            startActivity(nav)
+                            finish()
+                        }, 800)
+                    } else {
+                        binding.tvSaveJournalText.text = getString(R.string.save_to_journal)
+                        binding.btnSaveJournal.isEnabled = true
+                        Toast.makeText(this@LandmarkDetailActivity, "Failed to save", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("LandmarkDetail", "saveFromAr failed", e)
+                withContext(Dispatchers.Main) {
+                    binding.tvSaveJournalText.text = getString(R.string.save_to_journal)
+                    binding.btnSaveJournal.isEnabled = true
+                    Toast.makeText(this@LandmarkDetailActivity, "Failed to save", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     private fun loadHeroImage() {
-        val photoUri = intent.getStringExtra("photo_uri")
+        val photoUri = intent.getStringExtra("photo_uri")?.takeIf { it.isNotEmpty() }
         if (photoUri != null) {
             Glide.with(this)
                 .load(Uri.parse(photoUri))
                 .centerCrop()
                 .into(binding.imgHero)
         } else {
-            Glide.with(this)
-                .load("https://lh3.googleusercontent.com/aida-public/AB6AXuBPPjdUmoidMGut4ZivsU1EYUt5gdB0hP6coo4ySRWZEUnav0srJhwFZGS_7LOZSAzViJFaYJ5htcB5Z5tQb2FIY1maAW_SXZ_wMJ8yyPJUn-A2Gsqb8md5y6YFS3QnjEUEXPYntKtgrautJn5dWmaSnQPGy_-11yZ02xiDhTz8hByrzLXHgSsexR1K9h154R1Do06Tc9y0qwHWPZscgqDUpxDjWYcnvoe22pHGud4iBmsRdcR588sSvdbbA5RZOLAHCO6zrAMIon4")
-                .centerCrop()
-                .into(binding.imgHero)
+            // No photo yet — show gradient placeholder; AR will replace it with Wikipedia photo
+            binding.imgHero.setBackgroundResource(R.drawable.bg_gradient)
         }
     }
 
@@ -567,6 +713,19 @@ class LandmarkDetailActivity : AppCompatActivity() {
         }
     }
 
+    private fun showNewBadges(badges: JSONArray?) {
+        if (badges == null || badges.length() == 0) return
+        val handler = Handler(Looper.getMainLooper())
+        for (i in 0 until badges.length()) {
+            val badge = badges.optJSONObject(i) ?: continue
+            val emoji = badge.optString("emoji", "🏅")
+            val title = badge.optString("title", "Badge Unlocked")
+            handler.postDelayed({
+                Toast.makeText(this, "$emoji $title unlocked!", Toast.LENGTH_SHORT).show()
+            }, i * 1500L)
+        }
+    }
+
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
@@ -575,44 +734,103 @@ class LandmarkDetailActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun updateFavoriteIcon(animated: Boolean = true) {
+        val icon = if (isFavorited) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
+        binding.btnFavorite.setImageResource(icon)
+        if (animated) {
+            binding.btnFavorite.scaleX = 0.6f
+            binding.btnFavorite.scaleY = 0.6f
+            binding.btnFavorite.animate()
+                .scaleX(1f).scaleY(1f)
+                .setDuration(300)
+                .setInterpolator(android.view.animation.OvershootInterpolator(3f))
+                .start()
+        }
+    }
+
+    private fun toggleFavorite() {
+        val serverId = intent.getLongExtra("server_id", -1L)
+        isFavorited = !isFavorited
+        updateFavoriteIcon(animated = true)
+
+        // Persist locally
+        updateLocalEntry(serverId) { it.put("is_favorited", if (isFavorited) 1 else 0) }
+
+        if (serverId <= 0) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val sm = SessionManager(this@LandmarkDetailActivity)
+                val body = JSONObject().apply {
+                    put("user_id", sm.userId)
+                    put("device_id", sm.deviceId)
+                }
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/favorite")
+                    .put(body.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+                httpClient.newCall(request).execute().close()
+            } catch (e: Exception) {
+                Log.e("LandmarkDetail", "Failed to toggle favorite", e)
+            }
+        }
+    }
+
     private fun setupClickListeners() {
         binding.btnBack.setOnClickListener {
             finish()
         }
 
-        binding.btnRetake.setOnClickListener {
-            val imageDir = File(cacheDir, "images")
-            imageDir.mkdirs()
-            val imageFile = File(imageDir, "photo_${System.currentTimeMillis()}.jpg")
-            retakePhotoUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", imageFile)
-            takePictureLauncher.launch(retakePhotoUri!!)
+        binding.btnFavorite.setOnClickListener {
+            toggleFavorite()
+        }
+
+        val fromAr = intent.getBooleanExtra("from_ar", false)
+        if (fromAr) {
+            binding.btnRetake.text = getString(R.string.scan_again)
+            binding.btnRetake.setOnClickListener { finish() }
+        } else {
+            binding.btnRetake.setOnClickListener {
+                val imageDir = File(cacheDir, "images")
+                imageDir.mkdirs()
+                val imageFile = File(imageDir, "photo_${System.currentTimeMillis()}.jpg")
+                retakePhotoUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", imageFile)
+                takePictureLauncher.launch(retakePhotoUri!!)
+            }
         }
 
         binding.btnShare.setOnClickListener {
             showShareSheet()
         }
 
-        binding.btnSaveJournal.setOnClickListener {
-            val session = SessionManager(this)
-            if (session.isFree) {
-                val prefs = getSharedPreferences("recognizeai_landmarks", MODE_PRIVATE)
-                val arr = JSONArray(prefs.getString("landmarks", "[]"))
-                var savedCount = 0
-                for (i in 0 until arr.length()) {
-                    if (arr.getJSONObject(i).optInt("is_saved", 0) != 0) savedCount++
+        binding.btnWrongLandmark.setOnClickListener {
+            showCorrectLandmarkSheet()
+        }
+
+        if (fromAr) {
+            binding.btnSaveJournal.setOnClickListener { saveFromAr() }
+        } else {
+            binding.btnSaveJournal.setOnClickListener {
+                val session = SessionManager(this)
+                if (session.isFree) {
+                    val prefs = getSharedPreferences("recognizeai_landmarks", MODE_PRIVATE)
+                    val arr = JSONArray(prefs.getString("landmarks", "[]"))
+                    var savedCount = 0
+                    for (i in 0 until arr.length()) {
+                        if (arr.getJSONObject(i).optInt("is_saved", 0) != 0) savedCount++
+                    }
+                    if (savedCount >= session.maxJournalEntries) {
+                        startActivity(Intent(this, SubscriptionActivity::class.java))
+                        return@setOnClickListener
+                    }
                 }
-                if (savedCount >= session.maxJournalEntries) {
-                    startActivity(Intent(this, SubscriptionActivity::class.java))
-                    return@setOnClickListener
-                }
+                saveToJournal()
+                Toast.makeText(this, "Saved to Journal", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, MainActivity::class.java)
+                intent.putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_SAVED)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                startActivity(intent)
+                finish()
             }
-            saveToJournal()
-            Toast.makeText(this, "Saved to Journal", Toast.LENGTH_SHORT).show()
-            val intent = Intent(this, MainActivity::class.java)
-            intent.putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_SAVED)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-            finish()
         }
 
     }
@@ -1083,5 +1301,136 @@ class LandmarkDetailActivity : AppCompatActivity() {
                 .withEndAction { popup.dismiss() }
                 .start()
         }, 2000)
+    }
+
+    private fun showCorrectLandmarkSheet() {
+        val serverId = intent.getLongExtra("server_id", -1L)
+        val session = SessionManager(this)
+        val language = session.language
+
+        val sheet = BottomSheetDialog(this)
+        val sheetView = LayoutInflater.from(this).inflate(R.layout.bottom_sheet_correct_landmark, null)
+        sheet.setContentView(sheetView)
+
+        val etSearch     = sheetView.findViewById<EditText>(R.id.etLandmarkSearch)
+        val btnSearch    = sheetView.findViewById<TextView>(R.id.btnSearch)
+        val tvStatus     = sheetView.findViewById<TextView>(R.id.tvSearchStatus)
+        val previewCard  = sheetView.findViewById<android.view.View>(R.id.previewCard)
+        val tvName       = sheetView.findViewById<TextView>(R.id.tvPreviewName)
+        val tvLocation   = sheetView.findViewById<TextView>(R.id.tvPreviewLocation)
+        val tvSnippet    = sheetView.findViewById<TextView>(R.id.tvPreviewSnippet)
+        val btnConfirm   = sheetView.findViewById<TextView>(R.id.btnConfirmCorrect)
+
+        var pendingData: JSONObject? = null
+
+        fun doSearch() {
+            val q = etSearch.text.toString().trim()
+            if (q.isEmpty()) return
+            tvStatus.text = getString(R.string.correct_searching)
+            tvStatus.visibility = android.view.View.VISIBLE
+            previewCard.visibility = android.view.View.GONE
+            btnSearch.isEnabled = false
+
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val url = "${SessionManager.BASE_URL}/api/landmarks/search?q=${URLEncoder.encode(q, "UTF-8")}&language=$language&device_id=${session.deviceId}"
+                    val req = Request.Builder().url(url).get().build()
+                    val resp = OkHttpClient().newCall(req).execute()
+                    val body = resp.body?.string() ?: ""
+                    withContext(Dispatchers.Main) {
+                        btnSearch.isEnabled = true
+                        if (resp.code == 404) {
+                            tvStatus.text = getString(R.string.correct_not_found)
+                            return@withContext
+                        }
+                        val json = JSONObject(body)
+                        pendingData = json
+                        tvStatus.visibility = android.view.View.GONE
+                        tvName.text = json.optString("name")
+                        tvLocation.text = json.optString("location")
+                        tvSnippet.text = json.optString("narrative_p1")
+                        previewCard.visibility = android.view.View.VISIBLE
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        btnSearch.isEnabled = true
+                        tvStatus.text = getString(R.string.correct_error)
+                    }
+                }
+            }
+        }
+
+        btnSearch.setOnClickListener { doSearch() }
+        etSearch.setOnEditorActionListener { _, _, _ -> doSearch(); true }
+
+        btnConfirm.setOnClickListener {
+            val data = pendingData ?: return@setOnClickListener
+            btnConfirm.text = getString(R.string.correct_saving)
+            btnConfirm.isEnabled = false
+
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val body = JSONObject().apply {
+                        put("user_id", if (session.userId > 0) session.userId else JSONObject.NULL)
+                        put("device_id", session.deviceId)
+                        put("name", data.optString("name"))
+                        put("location", data.optString("location"))
+                        put("year_built", data.optString("year_built"))
+                        put("status", data.optString("status"))
+                        put("architect", data.optString("architect"))
+                        put("capacity", data.optString("capacity"))
+                        put("narrative_p1", data.optString("narrative_p1"))
+                        put("narrative_quote", data.optString("narrative_quote"))
+                        put("narrative_p2", data.optString("narrative_p2"))
+                        put("nearby1_name", data.optString("nearby1_name"))
+                        put("nearby1_category", data.optString("nearby1_category"))
+                        put("nearby2_name", data.optString("nearby2_name"))
+                        put("nearby2_category", data.optString("nearby2_category"))
+                        put("nearby3_name", data.optString("nearby3_name"))
+                        put("nearby3_category", data.optString("nearby3_category"))
+                        put("landmark_lat", data.optDouble("landmark_lat"))
+                        put("landmark_lng", data.optDouble("landmark_lng"))
+                    }
+                    val reqBody = body.toString().toRequestBody("application/json".toMediaType())
+
+                    // Update on server if we have a server ID
+                    if (serverId > 0) {
+                        val req = Request.Builder()
+                            .url("${SessionManager.BASE_URL}/api/landmarks/$serverId/correct")
+                            .patch(reqBody)
+                            .build()
+                        OkHttpClient().newCall(req).execute().close()
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        // Update UI immediately
+                        binding.tvTitle.text = data.optString("name")
+                        binding.tvLocation.text = data.optString("location")
+                        binding.tvYearBuiltValue.text = data.optString("year_built")
+                        binding.tvStatusValue.text = data.optString("status")
+                        binding.tvArchitectValue.text = data.optString("architect")
+                        binding.tvCapacityValue.text = data.optString("capacity")
+                        binding.tvNarrativeP1.text = data.optString("narrative_p1")
+                        val q = data.optString("narrative_quote").trim()
+                            .trimStart('"', '\u201C').trimEnd('"', '\u201D')
+                        binding.tvNarrativeQuote.text = "\u201C$q\u201D"
+                        binding.tvNarrativeP2.text = data.optString("narrative_p2")
+
+                        sheet.dismiss()
+                        Toast.makeText(this@LandmarkDetailActivity,
+                            getString(R.string.correct_success), Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        btnConfirm.text = getString(R.string.correct_confirm_btn)
+                        btnConfirm.isEnabled = true
+                        Toast.makeText(this@LandmarkDetailActivity,
+                            getString(R.string.correct_error), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        sheet.show()
     }
 }

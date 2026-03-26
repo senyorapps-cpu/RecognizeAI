@@ -45,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="3dp"
-            android:fontFamily="@font/inter_bold"
+            android:fontFamily="@font/plus_jakarta_sans_bold"
             android:textColor="@color/white"
             android:textSize="11sp" />
 
@@ -66,7 +66,7 @@
             android:textSize="14sp"
             android:maxLines="2"
             android:ellipsize="end"
-            android:fontFamily="@font/inter_bold" />
+            android:fontFamily="@font/plus_jakarta_sans_bold" />
 
         <TextView
             android:id="@+id/txtPlaceLocation"
@@ -77,7 +77,7 @@
             android:textSize="11sp"
             android:maxLines="1"
             android:ellipsize="end"
-            android:fontFamily="@font/inter_medium" />
+            android:fontFamily="@font/plus_jakarta_sans_medium" />
 
     </LinearLayout>
 

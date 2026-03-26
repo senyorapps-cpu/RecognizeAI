@@ -3,9 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient"
-    android:clipToPadding="false"
+    android:fillViewport="true"
     android:overScrollMode="never"
-    android:scrollbars="none">
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,7 +28,7 @@
                 android:text="@string/explore_today"
                 android:textColor="@color/deep_blue"
                 android:textSize="28sp"
-                android:fontFamily="@font/inter_bold"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
                 android:letterSpacing="-0.02" />
 
             <TextView
@@ -39,11 +39,86 @@
                 android:text="@string/location_info"
                 android:textColor="@color/deep_blue_50"
                 android:textSize="14sp"
-                android:fontFamily="@font/inter_medium" />
+                android:fontFamily="@font/plus_jakarta_sans_medium" />
 
         </LinearLayout>
 
-        <!-- Main content -->
+        <!-- AR Mode Banner -->
+        <LinearLayout
+            android:id="@+id/cardArMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_ar_mode_card"
+            android:clickable="true"
+            android:clipToOutline="true"
+            android:elevation="4dp"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
+
+            <FrameLayout
+                android:layout_width="42dp"
+                android:layout_height="42dp">
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/bg_ar_icon_circle" />
+
+                <ImageView
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_view_in_ar"
+                    android:tint="@color/white" />
+
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/plus_jakarta_sans_bold"
+                    android:text="@string/ar_mode_title"
+                    android:textColor="@color/white"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:alpha="0.75"
+                    android:fontFamily="@font/plus_jakarta_sans"
+                    android:text="@string/ar_mode_subtitle"
+                    android:textColor="@color/white"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:alpha="0.85"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:text="→"
+                android:textColor="@color/white"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+        <!-- Main content (padded) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -65,7 +140,7 @@
                     android:text="@string/your_latest_snap"
                     android:textColor="@color/deep_blue"
                     android:textSize="20sp"
-                    android:fontFamily="@font/inter_bold"
+                    android:fontFamily="@font/plus_jakarta_sans_bold"
                     android:letterSpacing="-0.01" />
 
                 <TextView
@@ -75,11 +150,11 @@
                     android:text="@string/see_history"
                     android:textColor="@color/gold_accent"
                     android:textSize="13sp"
-                    android:fontFamily="@font/inter_semibold" />
+                    android:fontFamily="@font/plus_jakarta_sans_semibold" />
 
             </LinearLayout>
 
-            <!-- Last Capture Card (new design) -->
+            <!-- Last Capture Card -->
             <FrameLayout
                 android:id="@+id/cardLastCapture"
                 android:layout_width="match_parent"
@@ -90,15 +165,13 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <!-- 4:3 aspect image -->
                 <ImageView
                     android:id="@+id/imgLastCapture"
                     android:layout_width="match_parent"
-                    android:layout_height="260dp"
+                    android:layout_height="182dp"
                     android:scaleType="centerCrop"
                     android:contentDescription="Last capture" />
 
-                <!-- Glassmorphic overlay at bottom -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -123,7 +196,7 @@
                             android:text="@string/the_colosseum"
                             android:textColor="@color/deep_blue"
                             android:textSize="17sp"
-                            android:fontFamily="@font/inter_bold"
+                            android:fontFamily="@font/plus_jakarta_sans_bold"
                             android:maxLines="1"
                             android:ellipsize="end" />
 
@@ -147,7 +220,7 @@
                                 android:layout_marginStart="3dp"
                                 android:textColor="@color/deep_blue_50"
                                 android:textSize="12sp"
-                                android:fontFamily="@font/inter_medium"
+                                android:fontFamily="@font/plus_jakarta_sans_medium"
                                 android:maxLines="1"
                                 android:ellipsize="end" />
 
@@ -161,7 +234,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_view_details_button"
-                        android:fontFamily="@font/inter_bold"
+                        android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="10dp"
                         android:text="@string/view_details"
@@ -172,60 +245,52 @@
 
             </FrameLayout>
 
-            <!-- Top Places Section -->
-            <LinearLayout
+        </LinearLayout>
+
+        <!-- Liked Places Section — full-width, horizontal slider -->
+        <LinearLayout
+            android:id="@+id/sectionLikedPlaces"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:orientation="vertical"
-                android:paddingBottom="120dp">
+                android:layout_marginBottom="12dp"
+                android:paddingHorizontal="24dp"
+                android:text="@string/liked_places"
+                android:textColor="@color/deep_blue"
+                android:textSize="20sp"
+                android:fontFamily="@font/plus_jakarta_sans_bold"
+                android:letterSpacing="-0.01" />
+
+            <!-- Horizontal slider — cards added programmatically -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:overScrollMode="never"
+                android:paddingStart="24dp"
+                android:paddingEnd="8dp"
+                android:clipToPadding="false">
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:id="@+id/likedPlacesRow"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="4dp">
+                    android:orientation="horizontal" />
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/top_places"
-                        android:textColor="@color/deep_blue"
-                        android:textSize="18sp"
-                        android:fontFamily="@font/inter_bold" />
-
-                    <TextView
-                        android:id="@+id/btnViewAll"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/view_all"
-                        android:textColor="@color/deep_blue_50"
-                        android:textSize="14sp"
-                        android:fontFamily="@font/inter_semibold" />
-
-                </LinearLayout>
-
-                <HorizontalScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:clipToPadding="false"
-                    android:overScrollMode="never"
-                    android:scrollbars="none">
-
-                    <LinearLayout
-                        android:id="@+id/topPlacesContainer"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal" />
-
-                </HorizontalScrollView>
-
-            </LinearLayout>
+            </HorizontalScrollView>
 
         </LinearLayout>
+
+        <!-- bottom padding for nav bar -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="80dp" />
 
     </LinearLayout>
 

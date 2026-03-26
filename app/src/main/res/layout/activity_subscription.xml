@@ -33,7 +33,7 @@
             android:layout_weight="1"
             android:text="Choose Your Plan"
             android:textSize="20sp"
-            android:fontFamily="@font/inter_bold"
+            android:fontFamily="@font/plus_jakarta_sans_bold"
             android:textColor="@color/deep_blue"
             android:gravity="center" />
 
@@ -60,7 +60,7 @@
                 android:layout_height="wrap_content"
                 android:text="Unlock the full power of SightAI"
                 android:textSize="14sp"
-                android:fontFamily="@font/inter"
+                android:fontFamily="@font/plus_jakarta_sans"
                 android:textColor="@color/deep_blue_50"
                 android:gravity="center"
                 android:paddingBottom="20dp" />
@@ -79,16 +79,16 @@
                     android:orientation="horizontal" android:gravity="center_vertical">
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1" android:text="Explorer"
-                        android:textSize="18sp" android:fontFamily="@font/inter_bold"
+                        android:textSize="18sp" android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:textColor="@color/deep_blue" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Free" android:textSize="18sp" android:fontFamily="@font/inter_bold"
+                        android:text="Free" android:textSize="18sp" android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:textColor="@color/deep_blue" />
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvFreeCurrent" android:layout_width="wrap_content"
                     android:layout_height="wrap_content" android:text="Your current plan"
-                    android:textSize="12sp" android:fontFamily="@font/inter_medium"
+                    android:textSize="12sp" android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:textColor="@color/gold_accent" android:layout_marginTop="2dp"
                     android:visibility="gone" />
 
@@ -98,7 +98,7 @@
 
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="✓  5 AI scans per day\n✓  Basic landmark details\n✓  20 journal entries max\n✓  Google Maps navigation\n✗  Audio narration\n✗  Share card\n✗  Offline queue (3 max)"
-                    android:textSize="13sp" android:fontFamily="@font/inter"
+                    android:textSize="13sp" android:fontFamily="@font/plus_jakarta_sans"
                     android:textColor="@color/deep_blue_70" android:lineSpacingMultiplier="1.6" />
 
             </LinearLayout>
@@ -121,10 +121,10 @@
                             android:orientation="horizontal" android:gravity="center_vertical">
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                 android:text="Traveler" android:textSize="18sp"
-                                android:fontFamily="@font/inter_bold" android:textColor="@color/white" />
+                                android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/white" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                 android:text="  POPULAR" android:textSize="10sp"
-                                android:fontFamily="@font/inter_bold" android:textColor="@color/gold_accent"
+                                android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/gold_accent"
                                 android:background="@drawable/bg_popular_badge"
                                 android:paddingStart="8dp" android:paddingEnd="8dp"
                                 android:paddingTop="3dp" android:paddingBottom="3dp"
@@ -135,17 +135,17 @@
                         android:orientation="vertical" android:gravity="end">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:text="$3.99" android:textSize="20sp"
-                            android:fontFamily="@font/inter_bold" android:textColor="@color/white" />
+                            android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/white" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:text="/ month" android:textSize="11sp"
-                            android:fontFamily="@font/inter" android:textColor="#AACCFF"
+                            android:fontFamily="@font/plus_jakarta_sans" android:textColor="#AACCFF"
                             android:layout_gravity="end" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvPlusCurrent" android:layout_width="wrap_content"
                     android:layout_height="wrap_content" android:text="Your current plan"
-                    android:textSize="12sp" android:fontFamily="@font/inter_medium"
+                    android:textSize="12sp" android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:textColor="@color/gold_accent" android:layout_marginTop="2dp"
                     android:visibility="gone" />
 
@@ -155,7 +155,7 @@
 
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="✓  50 AI scans per day\n✓  Unlimited journal\n✓  Audio narration\n✓  Share card generation\n✓  Full nearby places\n✓  Offline queue (20 photos)\n✓  Multi-language AI output"
-                    android:textSize="13sp" android:fontFamily="@font/inter"
+                    android:textSize="13sp" android:fontFamily="@font/plus_jakarta_sans"
                     android:textColor="#DDEEFF" android:lineSpacingMultiplier="1.6" />
 
                 <TextView
@@ -168,7 +168,7 @@
                     android:text="Upgrade to Traveler"
                     android:textColor="@color/deep_blue"
                     android:textSize="15sp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/plus_jakarta_sans_semibold"
                     android:textAllCaps="false" />
 
             </LinearLayout>
@@ -187,23 +187,23 @@
                     android:orientation="horizontal" android:gravity="center_vertical">
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1" android:text="Globetrotter"
-                        android:textSize="18sp" android:fontFamily="@font/inter_bold"
+                        android:textSize="18sp" android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:textColor="@color/deep_blue" />
                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:orientation="vertical" android:gravity="end">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:text="$7.99" android:textSize="20sp"
-                            android:fontFamily="@font/inter_bold" android:textColor="@color/deep_blue" />
+                            android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/deep_blue" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:text="/ month" android:textSize="11sp"
-                            android:fontFamily="@font/inter" android:textColor="@color/deep_blue_50"
+                            android:fontFamily="@font/plus_jakarta_sans" android:textColor="@color/deep_blue_50"
                             android:layout_gravity="end" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvProCurrent" android:layout_width="wrap_content"
                     android:layout_height="wrap_content" android:text="Your current plan"
-                    android:textSize="12sp" android:fontFamily="@font/inter_medium"
+                    android:textSize="12sp" android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:textColor="@color/gold_accent" android:layout_marginTop="2dp"
                     android:visibility="gone" />
 
@@ -213,7 +213,7 @@
 
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="✓  Everything in Traveler\n✓  200 AI scans per day\n✓  Unlimited offline queue\n✓  Priority AI processing\n✓  Early access to new features"
-                    android:textSize="13sp" android:fontFamily="@font/inter"
+                    android:textSize="13sp" android:fontFamily="@font/plus_jakarta_sans"
                     android:textColor="@color/deep_blue_70" android:lineSpacingMultiplier="1.6" />
 
                 <TextView
@@ -226,7 +226,7 @@
                     android:text="Upgrade to Globetrotter"
                     android:textColor="@color/white"
                     android:textSize="15sp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/plus_jakarta_sans_semibold"
                     android:textAllCaps="false" />
 
             </LinearLayout>
@@ -236,7 +236,7 @@
                 android:layout_height="wrap_content"
                 android:text="Payments processed securely via Google Play.\nCancel anytime from your Play Store subscriptions."
                 android:textSize="11sp"
-                android:fontFamily="@font/inter"
+                android:fontFamily="@font/plus_jakarta_sans"
                 android:textColor="@color/deep_blue_50"
                 android:gravity="center"
                 android:lineSpacingMultiplier="1.5"

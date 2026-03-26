@@ -226,6 +226,7 @@ th,td{padding:6px 4px}
     <a href="#" data-tab="contacts"><span class="icon">&#9993;</span><span>Contacts</span></a>
     <a href="#" data-tab="database"><span class="icon">&#9735;</span><span>Database</span></a>
     <a href="#" data-tab="plans"><span class="icon">&#9673;</span><span>Plans</span></a>
+    <a href="#" data-tab="subscriptions"><span class="icon">&#9654;</span><span>Subscriptions</span></a>
   </nav>
   <div class="sidebar-footer">
     <button onclick="doLogout()">Logout</button>
@@ -374,6 +375,16 @@ th,td{padding:6px 4px}
     <div class="monitor-grid" id="databaseInfo"></div>
   </div>
 
+  <!-- SUBSCRIPTIONS TAB -->
+  <div class="tab-content" id="tab-subscriptions">
+    <div class="main-header">
+      <h1>Subscription Audit</h1>
+      <button onclick="loadSubscriptions()" style="background:#25aff4;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:14px;">&#8635; Refresh</button>
+    </div>
+    <div class="stats-grid" id="subSummary" style="margin-bottom:24px"></div>
+    <div id="subTableWrap"></div>
+  </div>
+
 </div>
 
 <!-- Detail Modal -->
@@ -478,7 +489,8 @@ function loadTab(tab) {
     case "logs": loadLogs(); break;
     case "contacts": loadContacts(); break;
     case "database": loadDatabase(); break;
-      case "plans": loadPlans(); break;
+    case "plans": loadPlans(); break;
+    case "subscriptions": loadSubscriptions(); break;
   }
 }
 
@@ -633,7 +645,7 @@ async function loadLandmarks(page) {
     tbody.innerHTML = d.landmarks.map((l) => `
       <tr>
         <td>${l.id}</td>
-        <td>${l.image_filename ? `<img src="${API}/api/uploads/${l.image_filename}" style="width:40px;height:40px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : "-"}</td>
+        <td>${l.image_filename ? `<img src="${l.image_filename.startsWith('http') ? l.image_filename : `${API}/api/uploads/${l.image_filename}`}" style="width:40px;height:40px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : "-"}</td>
         <td>${esc(l.name)}</td>
         <td class="hide-mobile">${l.image_size ? fmtBytes(l.image_size) : "-"}</td>
         <td class="hide-mobile">${esc(l.location)}</td>
@@ -664,7 +676,7 @@ async function viewLandmark(id) {
   try {
     const l = await apiFetch(`/api/admin/landmarks/${id}`);
     let html = `<h2>${esc(l.name)}</h2>`;
-    if (l.image_filename) html += `<img src="${API}/api/uploads/${l.image_filename}" onerror="this.style.display='none'">`;
+    if (l.image_filename) html += `<img src="${l.image_filename.startsWith('http') ? l.image_filename : `${API}/api/uploads/${l.image_filename}`}" onerror="this.style.display='none'">`;
     html += `
       <div class="detail-row"><span class="dlabel">ID</span><span>${l.id}</span></div>
       <div class="detail-row"><span class="dlabel">Image Size</span><span>${l.image_size ? fmtBytes(l.image_size) : "-"}</span></div>
@@ -900,6 +912,81 @@ async function savePlan(plan) {
     alert(`${plan} plan saved successfully!`);
   } catch(e) { alert('Save failed: ' + e.message); }
 }
+// ── Subscription Audit ────────────────────────────────────────
+async function loadSubscriptions() {
+  document.getElementById('subSummary').innerHTML = '<p style="color:#888">Loading… (may take a few seconds)</p>';
+  document.getElementById('subTableWrap').innerHTML = '';
+  try {
+    const data = await apiFetch('/api/admin/subscription-audit');
+
+    const summaryColor = data.mismatched > 0 ? '#e74c3c' : '#27ae60';
+    document.getElementById('subSummary').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${data.total}</div><div class="stat-label">Paid in DB</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:#27ae60">${data.matched}</div><div class="stat-label">Match Google</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:${summaryColor}">${data.mismatched}</div><div class="stat-label">Mismatch</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:#e67e22">${data.errors}</div><div class="stat-label">API Errors</div></div>
+    `;
+
+    if (data.rows.length === 0) {
+      document.getElementById('subTableWrap').innerHTML = '<p style="color:#888;padding:20px">No paid subscriptions in database.</p>';
+      return;
+    }
+
+    const fmtDate = iso => iso ? iso.replace('T', ' ').substring(0, 16) : '—';
+    const paymentLabel = s => s === null ? '—' : s === 0 ? '0 Pending' : s === 1 ? '1 Received' : s === 2 ? '2 Free trial' : s === 3 ? '3 Deferred' : s;
+
+    const rows = data.rows.map(r => {
+      const matchCell = r.error
+        ? `<td style="color:#e67e22;font-weight:600">⚠ Error</td>`
+        : r.match === true
+          ? `<td style="color:#27ae60;font-weight:600">✓ Match</td>`
+          : `<td style="color:#e74c3c;font-weight:600">✗ Mismatch</td>`;
+      const dbStatus = r.db_active
+        ? `<span style="color:#27ae60">Active</span>`
+        : `<span style="color:#e74c3c">Expired</span>`;
+      const googleStatus = r.error
+        ? `<span style="color:#e67e22" title="${r.error}">Error</span>`
+        : r.google_active === null ? '—'
+        : r.google_active
+          ? `<span style="color:#27ae60">Active</span>`
+          : `<span style="color:#e74c3c">Expired</span>`;
+      const rowStyle = r.match === false ? 'background:#fff5f5' : r.error ? 'background:#fffbf0' : '';
+      return `<tr style="${rowStyle}">
+        ${matchCell}
+        <td>${r.id}</td>
+        <td>${r.email || '—'}</td>
+        <td><strong>${r.plan}</strong></td>
+        <td>${dbStatus}<br><small style="color:#888">${fmtDate(r.db_expiry)}</small></td>
+        <td>${googleStatus}<br><small style="color:#888">${fmtDate(r.google_expiry)}</small></td>
+        <td>${paymentLabel(r.google_payment_state)}</td>
+        <td>${r.google_auto_renew === true ? '✓ Yes' : r.google_auto_renew === false ? '✗ No' : '—'}</td>
+        <td style="color:#e67e22;font-size:12px">${r.error || ''}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('subTableWrap').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f0f4f8;text-align:left">
+            <th style="padding:10px 8px">Status</th>
+            <th style="padding:10px 8px">ID</th>
+            <th style="padding:10px 8px">Email</th>
+            <th style="padding:10px 8px">Plan</th>
+            <th style="padding:10px 8px">DB Status / Expiry</th>
+            <th style="padding:10px 8px">Google Status / Expiry</th>
+            <th style="padding:10px 8px">Payment State</th>
+            <th style="padding:10px 8px">Auto-Renew</th>
+            <th style="padding:10px 8px">Error</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  } catch(e) {
+    document.getElementById('subSummary').innerHTML = `<p style="color:#e74c3c">Failed to load: ${e.message}</p>`;
+  }
+}
+
 checkAuth();
 </script>
 </body>

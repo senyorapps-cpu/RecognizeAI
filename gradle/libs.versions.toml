@@ -17,6 +17,9 @@ playServicesLocation = "21.3.0"
 json = "20231013"
 exifinterface = "1.3.7"
 billing = "7.1.1"
+camerax = "1.3.4"
+mapsUtils = "3.8.2"
+workManager = "2.9.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -35,6 +38,12 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
 billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
+camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+maps-utils = { group = "com.google.maps.android", name = "android-maps-utils", version.ref = "mapsUtils" }
+work-manager = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginStart="12dp"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/plus_jakarta_sans_semibold"
         android:textColor="@color/deep_blue"
         android:textSize="15sp" />
 

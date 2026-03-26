@@ -159,4 +159,15 @@
     <!-- Onboarding Animation -->
     <string name="scanning">Сканирование</string>
     <string name="eiffel_tower_paris">Эйфелева башня, Париж</string>
+    <string name="notif_nearby_title">Вы рядом с %s</string>
+    <string name="notif_nearby_body">Нажмите, чтобы просмотреть сохранённую достопримечательность</string>
+    <!-- AR Mode -->
+    <string name="ar_mode_title">AR Живое Сканирование</string>
+    <string name="ar_mode_subtitle">Наведите на достопримечательность</string>
+    <string name="ar_scanning">Сканирование…</string>
+    <string name="ar_landmark_detected">Объект обнаружен!</string>
+    <string name="ar_point_at_landmark">Наведите на объект</string>
+    <string name="ar_hold_still">Не двигайтесь, анализ…</string>
+    <string name="ar_view_full_details">Подробнее →</string>
+    <string name="ar_no_landmark">Объект не обнаружен</string>
 </resources>

@@ -1,14 +1,19 @@
 package com.example.recognizeai
 
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
@@ -55,6 +60,7 @@ class ProfileFragment : Fragment() {
 
         loadUserInfo()
         loadStats()
+        loadBadges()
         updateLanguageDisplay()
         setupDarkModeToggle()
         setupClickListeners()
@@ -64,6 +70,7 @@ class ProfileFragment : Fragment() {
         super.onHiddenChanged(hidden)
         if (!hidden && _binding != null) {
             loadStats()
+            loadBadges()
         }
     }
 
@@ -72,7 +79,6 @@ class ProfileFragment : Fragment() {
             binding.tvGreeting.text = getString(R.string.profile_hello, session.displayName)
             binding.tvSubtitle.text = session.email.ifEmpty { getString(R.string.profile_subtitle_google) }
             binding.statsRow.visibility = View.VISIBLE
-            binding.signInPrompt.visibility = View.GONE
             binding.settingSubscription.visibility = View.VISIBLE
             binding.tvLogoutText.text = getString(R.string.profile_logout)
         } else {
@@ -80,7 +86,6 @@ class ProfileFragment : Fragment() {
             binding.tvGreeting.text = getString(R.string.profile_hello_guest)
             binding.tvSubtitle.text = getString(R.string.profile_subtitle_guest)
             binding.statsRow.visibility = View.GONE
-            binding.signInPrompt.visibility = View.VISIBLE
             binding.settingSubscription.visibility = View.GONE
             binding.tvLogoutText.text = getString(R.string.profile_sign_in)
         }
@@ -157,23 +162,154 @@ class ProfileFragment : Fragment() {
         binding.tvJournals.text = journalCount.toString()
     }
 
+    private fun loadBadges() {
+        if (_binding == null) return
+        val userId = session.userId
+        val deviceId = session.deviceId
+        val url = "${SessionManager.BASE_URL}/api/user/badges?device_id=$deviceId" +
+                if (userId > 0) "&user_id=$userId" else ""
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = Request.Builder().url(url).get().build()
+                val response = client.newCall(request).execute()
+                val body = response.body?.string() ?: "[]"
+                val badges = JSONArray(body)
+
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    renderBadgeGrid(badges)
+                }
+            } catch (e: Exception) {
+                Log.e("ProfileFragment", "Failed to load badges", e)
+            }
+        }
+    }
+
+    private fun renderBadgeGrid(badges: JSONArray) {
+        val grid = binding.badgeGrid
+        grid.removeAllViews()
+
+        val total = badges.length()
+        var earned = 0
+        val badgeList = mutableListOf<JSONObject>()
+        for (i in 0 until total) {
+            val b = badges.getJSONObject(i)
+            badgeList.add(b)
+            if (b.optBoolean("earned", false)) earned++
+        }
+
+        binding.tvBadgeCount.text = "$earned / $total"
+
+        val dp = resources.displayMetrics.density
+        val colCount = 4
+        val rows = (badgeList.size + colCount - 1) / colCount
+
+        for (row in 0 until rows) {
+            val rowLayout = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).also { it.bottomMargin = (12 * dp).toInt() }
+            }
+
+            for (col in 0 until colCount) {
+                val idx = row * colCount + col
+                val cellParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                if (col < colCount - 1) cellParams.marginEnd = (8 * dp).toInt()
+
+                if (idx >= badgeList.size) {
+                    // Empty filler
+                    val spacer = View(requireContext()).apply { layoutParams = cellParams }
+                    rowLayout.addView(spacer)
+                    continue
+                }
+
+                val badge = badgeList[idx]
+                val isEarned = badge.optBoolean("earned", false)
+                val emoji = badge.optString("emoji", "🏅")
+                val title = badge.optString("title", "")
+
+                val cell = LinearLayout(requireContext()).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    setPadding((8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt())
+                    alpha = if (isEarned) 1f else 0.35f
+                    setBackgroundResource(R.drawable.bg_setting_item)
+                    layoutParams = cellParams
+                }
+
+                val emojiView = TextView(requireContext()).apply {
+                    text = emoji
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
+                    gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                }
+
+                val titleView = TextView(requireContext()).apply {
+                    text = title
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                    setTextColor(resources.getColor(R.color.deep_blue, null))
+                    gravity = Gravity.CENTER
+                    maxLines = 2
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).also { it.topMargin = (4 * dp).toInt() }
+                }
+
+                cell.addView(emojiView)
+                cell.addView(titleView)
+                rowLayout.addView(cell)
+            }
+
+            grid.addView(rowLayout)
+        }
+    }
+
     private fun updateLanguageDisplay() {
         val lang = LocaleHelper.getLanguageByCode(LocaleHelper.getCurrentLanguageCode())
         binding.tvLanguageValue.text = "${lang.flag} ${lang.nativeName}"
     }
 
     private fun setupDarkModeToggle() {
-        binding.switchDarkMode.isChecked = session.isDarkMode
+        // Theme is now handled via showThemePicker()
     }
 
-    private fun toggleDarkMode() {
-        val newMode = !session.isDarkMode
-        session.isDarkMode = newMode
-        binding.switchDarkMode.isChecked = newMode
-        AppCompatDelegate.setDefaultNightMode(
-            if (newMode) AppCompatDelegate.MODE_NIGHT_YES
-            else AppCompatDelegate.MODE_NIGHT_NO
+    private fun showThemePicker() {
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(R.layout.dialog_theme_picker)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
         )
+        dialog.window?.setGravity(android.view.Gravity.BOTTOM)
+
+        val current = session.appTheme
+        dialog.findViewById<android.widget.ImageView>(R.id.checkDefault).visibility =
+            if (current == ThemeHelper.THEME_DEFAULT) android.view.View.VISIBLE else android.view.View.GONE
+        dialog.findViewById<android.widget.ImageView>(R.id.checkNight).visibility =
+            if (current == ThemeHelper.THEME_NIGHT) android.view.View.VISIBLE else android.view.View.GONE
+        dialog.findViewById<android.widget.ImageView>(R.id.checkPaper).visibility =
+            if (current == ThemeHelper.THEME_PAPER) android.view.View.VISIBLE else android.view.View.GONE
+
+        fun pick(theme: String) {
+            session.appTheme = theme
+            ThemeHelper.applyGlobalMode(requireContext())
+            dialog.dismiss()
+            requireActivity().recreate()
+        }
+
+        dialog.findViewById<android.view.View>(R.id.cardThemeDefault).setOnClickListener { pick(ThemeHelper.THEME_DEFAULT) }
+        dialog.findViewById<android.view.View>(R.id.cardThemeNight).setOnClickListener { pick(ThemeHelper.THEME_NIGHT) }
+        dialog.findViewById<android.view.View>(R.id.cardThemePaper).setOnClickListener { pick(ThemeHelper.THEME_PAPER) }
+
+        dialog.show()
     }
 
     private fun setupClickListeners() {
@@ -219,7 +355,7 @@ class ProfileFragment : Fragment() {
         }
 
         binding.settingAppearance.setOnClickListener {
-            toggleDarkMode()
+            showThemePicker()
         }
     }
 

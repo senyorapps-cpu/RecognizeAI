@@ -15,6 +15,9 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = 3001;
 
+// Trust nginx proxy (fixes express-rate-limit X-Forwarded-For validation error)
+app.set("trust proxy", 1);
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: false,  // Disabled for share page HTML
@@ -57,6 +60,15 @@ const globalLimiter = rateLimit({
 });
 app.use("/api/", globalLimiter);
 
+// Strict rate limiter for Gemini text-only endpoints (no image required — easy to abuse)
+const geminiTextLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+
 // Strict rate limiter for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -69,7 +81,7 @@ const authLimiter = rateLimit({
 // Strict rate limiter for analyze endpoint (AI calls are expensive)
 const analyzeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many analysis requests, please try again later" },
@@ -235,11 +247,21 @@ async function initDb() {
       )
     `);
 
-    // Seed privacy policies if table is empty
-    const policyCount = await client.query("SELECT COUNT(*) FROM privacy_policies");
-    if (parseInt(policyCount.rows[0].count) === 0) {
-      await seedPrivacyPolicies(client);
-    }
+    // Upsert privacy policies on every start so content stays up to date
+    await seedPrivacyPolicies(client);
+
+    // Add is_favorited column
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS is_favorited INTEGER DEFAULT 0`);
+
+    // Add landmark geographic coordinates (where the landmark IS, not where the user is)
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS landmark_lat DOUBLE PRECISION`);
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS landmark_lng DOUBLE PRECISION`);
+
+    // Add is_ar column (1 = saved from AR Live Scan)
+    await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS is_ar INTEGER DEFAULT 0`);
+
+    // Backfill: existing AR saves always have a Wikipedia URL as image_filename
+    await client.query(`UPDATE landmarks SET is_ar = 1 WHERE image_filename LIKE 'http%' AND is_ar = 0`);
 
     // Add subscription plan columns
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT 'free'`);
@@ -269,6 +291,47 @@ async function initDb() {
       ON CONFLICT (plan) DO NOTHING
     `);
 
+    // Badges table (definitions)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS badges (
+        id VARCHAR(50) PRIMARY KEY,
+        emoji VARCHAR(10) NOT NULL,
+        title VARCHAR(100) NOT NULL,
+        description VARCHAR(255) NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+
+    // User earned badges
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_badges (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        device_id VARCHAR(255),
+        badge_id VARCHAR(50) NOT NULL REFERENCES badges(id),
+        earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id, badge_id) WHERE user_id IS NOT NULL`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_badges_device ON user_badges(device_id, badge_id) WHERE device_id IS NOT NULL AND user_id IS NULL`);
+
+    // Seed badge definitions
+    await client.query(`
+      INSERT INTO badges (id, emoji, title, description, sort_order) VALUES
+        ('first_scan',     '🏛️', 'First Discovery',  'Scanned your first landmark',       1),
+        ('explorer_5',     '🗺️', 'Explorer',         'Scanned 5 landmarks',                2),
+        ('adventurer_10',  '⛺', 'Adventurer',        'Scanned 10 landmarks',               3),
+        ('traveler_25',    '✈️', 'World Traveler',    'Scanned 25 landmarks',               4),
+        ('legend_50',      '🏆', 'Legend',            'Scanned 50 landmarks',               5),
+        ('first_ar',       '📡', 'AR Pioneer',        'Used AR Live Scan for the first time', 6),
+        ('ar_explorer',    '🔭', 'AR Explorer',       'Completed 5 AR Live Scans',          7),
+        ('globetrotter',   '🌍', 'Globetrotter',      'Visited landmarks in 3 countries',   8),
+        ('world_explorer', '🌐', 'World Explorer',    'Visited landmarks in 5 countries',   9),
+        ('critic',         '⭐', 'Critic',            'Gave your first star rating',        10),
+        ('journalist',     '📖', 'Journalist',        'Saved your first landmark to journal', 11)
+      ON CONFLICT (id) DO NOTHING
+    `);
+
     // Create indexes
     await client.query(`CREATE INDEX IF NOT EXISTS idx_landmarks_user_id ON landmarks(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_device_id ON users(device_id)`);
@@ -294,7 +357,7 @@ TripAI ("we", "our", or "us") operates the TripAI mobile application. This Priva
 1. Information We Collect
 
 - Photos & Camera: We access your camera to capture photos of landmarks. Photos are uploaded to our servers for AI analysis and stored to provide you with landmark information.
-- Location Data: With your permission, we collect your device's location to enhance landmark identification accuracy and show nearby places.
+- Location Data: With your permission, we collect your device's location to enhance landmark identification accuracy and show nearby places. SightAI also uses background location to detect when you are near a landmark you have previously saved, and to send you a local proximity notification. Location data is processed on-device and is never sent to our servers.
 - Device Information: We collect your device identifier to associate your data with your account and enable guest access.
 - Account Information: If you sign in with Google, we receive your name, email address, and profile photo from Google.
 - Language Preference: We store your selected language preference to provide the app in your chosen language.
@@ -744,10 +807,48 @@ app.put("/api/users/:id/language", async (req, res) => {
   }
 });
 
+// Travel Passport — user's badges (must be before /api/user/:id to avoid param conflict)
+app.get("/api/user/badges", async (req, res) => {
+  try {
+    const userId = req.query.user_id ? parseInt(req.query.user_id) : null;
+    const deviceId = req.query.device_id || null;
+
+    if (!userId && !deviceId) {
+      return res.status(400).json({ error: "user_id or device_id required" });
+    }
+
+    const allBadges = await pool.query("SELECT * FROM badges ORDER BY sort_order");
+
+    const earnedQuery = userId
+      ? `SELECT badge_id, earned_at FROM user_badges WHERE user_id = $1`
+      : `SELECT badge_id, earned_at FROM user_badges WHERE device_id = $1 AND user_id IS NULL`;
+    const earned = await pool.query(earnedQuery, [userId || deviceId]);
+    const earnedMap = {};
+    for (const row of earned.rows) earnedMap[row.badge_id] = row.earned_at;
+
+    const result = allBadges.rows.map(b => ({
+      ...b,
+      earned: !!earnedMap[b.id],
+      earned_at: earnedMap[b.id] || null,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("Badges error:", error);
+    res.status(500).json({ error: "Failed to fetch badges" });
+  }
+});
+
 // Get user profile
 app.get("/api/user/:id", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM users WHERE id = $1", [req.params.id]);
+    const deviceId = (req.query.device_id || "").trim();
+    const userId = parseInt(req.params.id);
+    if (!deviceId) return res.status(400).json({ error: "device_id is required" });
+    const result = await pool.query(
+      "SELECT * FROM users WHERE id = $1 AND device_id = $2",
+      [userId, deviceId]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -804,7 +905,7 @@ app.post("/api/verify-purchase", async (req, res) => {
   }
 
   try {
-    // Load service account key
+    // ── 1. Verify with Google Play API ──────────────────────────
     const keyPath = path.join(__dirname, "google-play-key.json");
     const auth = new google.auth.GoogleAuth({
       keyFile: keyPath,
@@ -814,72 +915,104 @@ app.post("/api/verify-purchase", async (req, res) => {
     const androidPublisher = google.androidpublisher({ version: "v3", auth });
     const packageName = "online.mnaks.sightai";
 
-    // Verify the subscription purchase with Google
-    const verifyResponse = await androidPublisher.purchases.subscriptions.get({
-      packageName,
-      subscriptionId: productId,
-      token: purchaseToken
-    });
+    let subscription;
+    try {
+      const verifyResponse = await androidPublisher.purchases.subscriptions.get({
+        packageName,
+        subscriptionId: productId,
+        token: purchaseToken
+      });
+      subscription = verifyResponse.data;
+    } catch (googleError) {
+      // Google API call failed — never fall back, always reject
+      console.error("[Purchase] Google API error:", googleError.message);
+      return res.status(402).json({
+        error: "purchase_not_verified",
+        message: "Could not verify purchase with Google. Please try again."
+      });
+    }
 
-    const subscription = verifyResponse.data;
+    // ── 2. Check payment was actually received ───────────────────
+    // paymentState: 0=pending, 1=received, 2=free trial, 3=deferred
+    const paymentState = subscription.paymentState;
+    if (paymentState !== 1 && paymentState !== 2) {
+      console.warn(`[Purchase] Payment not received. paymentState=${paymentState}, token=${purchaseToken}`);
+      return res.status(402).json({
+        error: "payment_not_received",
+        message: "Payment is pending or was not completed."
+      });
+    }
 
-    // Check subscription is active (not expired or cancelled)
+    // ── 3. Check subscription has not expired ────────────────────
     const expiryMs = parseInt(subscription.expiryTimeMillis || "0");
     if (expiryMs < Date.now()) {
-      return res.status(400).json({ error: "Subscription expired" });
+      console.warn(`[Purchase] Subscription expired. expiry=${new Date(expiryMs)}, token=${purchaseToken}`);
+      return res.status(402).json({ error: "subscription_expired", message: "Subscription has expired." });
     }
 
-    const expiryDate = new Date(expiryMs);
-
-    // Update plan in DB
-    const client = await pool.connect();
-    try {
-      if (userId && parseInt(userId) > 0) {
-        await client.query(
-          "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE id = $4",
-          [newPlan, expiryDate, purchaseToken, userId]
-        );
-      } else if (deviceId) {
-        await client.query(
-          "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE device_id = $4",
-          [newPlan, expiryDate, purchaseToken, deviceId]
-        );
+    // ── 4. Prevent token reuse across different accounts ─────────
+    const tokenCheck = await pool.query(
+      "SELECT id, device_id FROM users WHERE purchase_token = $1 LIMIT 1",
+      [purchaseToken]
+    );
+    if (tokenCheck.rows.length > 0) {
+      const existing = tokenCheck.rows[0];
+      const requestingId = userId ? parseInt(userId) : null;
+      const sameUser = (requestingId && existing.id === requestingId) ||
+                       (deviceId && existing.device_id === deviceId);
+      if (!sameUser) {
+        console.error(`[Purchase] Token reuse attempt! token=${purchaseToken}, existing_user=${existing.id}, requester=${userId || deviceId}`);
+        return res.status(403).json({ error: "token_already_used", message: "Purchase token already associated with another account." });
       }
-    } finally {
-      client.release();
     }
 
-    console.log(`[Purchase] Verified: productId=${productId}, plan=${newPlan}, userId=${userId}, expires=${expiryDate}`);
-    res.json({ success: true, plan: newPlan });
+    // ── 5. Grant plan ────────────────────────────────────────────
+    const expiryDate = new Date(expiryMs);
+    if (userId && parseInt(userId) > 0) {
+      await pool.query(
+        "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE id = $4",
+        [newPlan, expiryDate, purchaseToken, parseInt(userId)]
+      );
+    } else if (deviceId) {
+      await pool.query(
+        "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE device_id = $4",
+        [newPlan, expiryDate, purchaseToken, deviceId]
+      );
+    } else {
+      return res.status(400).json({ error: "No userId or deviceId provided" });
+    }
+
+    console.log(`[Purchase] ✓ Verified: productId=${productId}, plan=${newPlan}, paymentState=${paymentState}, userId=${userId}, expires=${expiryDate}`);
+    res.json({ success: true, plan: newPlan, expires_at: expiryDate });
 
   } catch (error) {
-    console.error("[Purchase] Verification error:", error.message);
-    // Fallback: grant plan without Google API verification (for internal testing)
-    // TODO: remove fallback before production launch
-    try {
-      const fallbackExpiry = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000); // 31 days
-      const client = await pool.connect();
-      try {
-        if (userId && parseInt(userId) > 0) {
-          await client.query(
-            "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE id = $4",
-            [newPlan, fallbackExpiry, purchaseToken, userId]
-          );
-        } else if (deviceId) {
-          await client.query(
-            "UPDATE users SET plan = $1, subscription_expires_at = $2, purchase_token = $3 WHERE device_id = $4",
-            [newPlan, fallbackExpiry, purchaseToken, deviceId]
-          );
-        }
-      } finally {
-        client.release();
-      }
-      console.log(`[Purchase] Fallback grant: productId=${productId}, plan=${newPlan}, userId=${userId}, expires=${fallbackExpiry}`);
-      res.json({ success: true, plan: newPlan });
-    } catch (dbError) {
-      console.error("[Purchase] Fallback DB error:", dbError.message);
-      res.status(500).json({ error: "Verification failed" });
+    console.error("[Purchase] Unexpected error:", error.message);
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
+
+// ── Subscription downgrade (called when no active purchase found) ──
+app.post("/api/subscription/downgrade", async (req, res) => {
+  const { userId, deviceId } = req.body;
+  if (!userId && !deviceId) {
+    return res.status(400).json({ error: "userId or deviceId required" });
+  }
+  try {
+    if (userId && parseInt(userId) > 0) {
+      await pool.query(
+        "UPDATE users SET plan = 'free', subscription_expires_at = NULL, purchase_token = NULL WHERE id = $1 AND (subscription_expires_at IS NULL OR subscription_expires_at < NOW())",
+        [parseInt(userId)]
+      );
+    } else {
+      await pool.query(
+        "UPDATE users SET plan = 'free', subscription_expires_at = NULL, purchase_token = NULL WHERE device_id = $1 AND (subscription_expires_at IS NULL OR subscription_expires_at < NOW())",
+        [deviceId]
+      );
     }
+    console.log(`[Downgrade] Downgraded to free: userId=${userId}, deviceId=${deviceId}`);
+    res.json({ success: true, plan: "free" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -900,6 +1033,200 @@ const LANG_NAMES = {
   pt: "Portuguese",
 };
 
+// ── AR Identify endpoint (fast, no DB save, no scan-limit deduction) ──────────
+const arLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many AR requests, please try again later" },
+});
+
+app.post("/api/ar-identify", arLimiter, upload.single("image"), async (req, res) => {
+  const device_id = req.body?.device_id || "unknown";
+  console.log(`[AR] Request from device=${device_id}, hasFile=${!!req.file}`);
+  try {
+    if (!req.file) {
+      console.log("[AR] No file — returning not_a_landmark");
+      return res.json({ not_a_landmark: true });
+    }
+
+    const filePath = req.file.path;
+    const [imageData] = await Promise.all([
+      fs.promises.readFile(filePath),
+    ]);
+    const base64Image = imageData.toString("base64");
+    const mimeType = req.file.mimetype || "image/jpeg";
+
+    // Clean up temp file async (don't wait)
+    fs.unlink(filePath, () => {});
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const prompt = `Is this a recognizable landmark or building? Reply with JSON only, no markdown.
+Not a landmark: {"not_a_landmark":true}
+Is a landmark: {"not_a_landmark":false,"name":"...","location":"City, Country","year_built":"..."}`;
+
+
+    const result = await model.generateContent([
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: mimeType,
+          data: base64Image,
+        },
+      },
+    ]);
+
+    const raw = result.response.text().trim();
+    // Strip markdown fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const json = JSON.parse(cleaned);
+    // Treat vague responses as not_a_landmark
+    const vaguePatterns = /discernible|cannot determine|unidentifiable|not identifiable|unknown location|cannot be identified|indeterminate|not recognizable/i;
+    if (!json.not_a_landmark && (!json.name || vaguePatterns.test(json.name) || vaguePatterns.test(json.location || ""))) {
+      json.not_a_landmark = true;
+    }
+    console.log(`[AR] Result: not_a_landmark=${json.not_a_landmark}, name=${json.name || "-"}`);
+    return res.json(json);
+  } catch (e) {
+    console.error("[AR Identify] Error:", e.message);
+    return res.json({ not_a_landmark: true });
+  }
+});
+// ── Wikipedia image helper (exact title → full-text search fallback) ─────────
+async function fetchWikipediaImage(name, location = "") {
+  const headers = { "User-Agent": "SightAI/1.0 (sightai@mnaks.online)" };
+  try {
+    // Step 1: exact title (with redirects)
+    const r1 = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(name)}&prop=pageimages&format=json&pithumbsize=1200&redirects=1`,
+      { headers }
+    );
+    if (r1.ok) {
+      const d1 = await r1.json();
+      const page1 = Object.values(d1.query?.pages || {})[0];
+      if (page1?.thumbnail?.source) return page1.thumbnail.source;
+    }
+    // Step 2: text search with name + first city word for disambiguation
+    const city = location ? location.split(",")[0].trim() : "";
+    const query = city ? `${name} ${city}` : name;
+    const r2 = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=1&format=json`,
+      { headers }
+    );
+    if (r2.ok) {
+      const d2 = await r2.json();
+      const title = d2.query?.search?.[0]?.title;
+      if (title) {
+        const r3 = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=1200`,
+          { headers }
+        );
+        if (r3.ok) {
+          const d3 = await r3.json();
+          const page3 = Object.values(d3.query?.pages || {})[0];
+          if (page3?.thumbnail?.source) return page3.thumbnail.source;
+        }
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+// ── Landmark Info endpoint (text-only, for AR "View Full Details") ────────────
+app.get("/api/landmark-info", geminiTextLimiter, async (req, res) => {
+  const name = (req.query.name || "").trim();
+  const lang = (req.query.lang || "en").trim();
+  const deviceId = (req.query.device_id || "").trim();
+  if (!name) return res.status(400).json({ error: "name is required" });
+  if (!deviceId) return res.status(400).json({ error: "device_id is required" });
+  const deviceCheck = await pool.query("SELECT id FROM users WHERE device_id = $1 LIMIT 1", [deviceId]);
+  if (deviceCheck.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
+
+  const langName = LANG_NAMES[lang] || "English";
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const prompt = `Provide detailed information about the landmark: "${name}".
+Reply ONLY with a JSON object, no markdown, no code fences. ALL text values must be in ${langName}:
+{
+  "name": "Official name of the landmark",
+  "location": "Full address or City, Country",
+  "year_built": "Year or era built",
+  "status": "UNESCO Site / National Monument / Historic Landmark / etc.",
+  "architect": "Architect or dynasty/civilization that built it",
+  "capacity": "Visitor capacity or notable size metric",
+  "narrative_p1": "A 2-3 sentence paragraph about the landmark history and significance.",
+  "narrative_quote": "A memorable quote or fact about the landmark.",
+  "narrative_p2": "A 2-3 sentence paragraph about an interesting architectural or cultural detail.",
+  "nearby1_name": "Name of a nearby attraction",
+  "nearby1_category": "Category like Museum, Park, Monument, etc.",
+  "nearby2_name": "Name of another nearby attraction",
+  "nearby2_category": "Category",
+  "nearby3_name": "Name of a third nearby attraction",
+  "nearby3_category": "Category"
+}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const json = JSON.parse(cleaned);
+
+    // Fetch Wikipedia photo with name + location fallback search
+    const photoUrl = await fetchWikipediaImage(name, json.location || "");
+    if (photoUrl) json.photo_url = photoUrl;
+
+    return res.json(json);
+  } catch (e) {
+    console.error("[Landmark Info] Error:", e.message);
+    return res.status(500).json({ error: "Failed to fetch landmark info" });
+  }
+});
+// ── Save AR landmark to journal (fetches Wikipedia image) ────────────────────
+app.post("/api/landmarks/save-from-ar", async (req, res) => {
+  const {
+    device_id, user_id, name, location, year_built, status, architect, capacity,
+    narrative_p1, narrative_quote, narrative_p2,
+    nearby1_name, nearby1_category, nearby2_name, nearby2_category,
+    nearby3_name, nearby3_category, language, rating
+  } = req.body;
+
+  if (!name) return res.status(400).json({ error: "name is required" });
+
+  // Fetch Wikipedia thumbnail with name + location fallback search
+  const wikiImageUrl = await fetchWikipediaImage(name, location || "");
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `INSERT INTO landmarks (
+        user_id, device_id, name, location, year_built, status, architect, capacity,
+        narrative_p1, narrative_quote, narrative_p2,
+        nearby1_name, nearby1_category, nearby2_name, nearby2_category,
+        nearby3_name, nearby3_category, language, image_filename, is_saved, is_ar, rating
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,1,1,$20)
+      RETURNING id`,
+      [
+        user_id || null, device_id || null, name, location || "", year_built || "",
+        status || "", architect || "", capacity || "",
+        narrative_p1 || "", narrative_quote || "", narrative_p2 || "",
+        nearby1_name || "", nearby1_category || "", nearby2_name || "", nearby2_category || "",
+        nearby3_name || "", nearby3_category || "", language || "en",
+        wikiImageUrl,
+        (Number.isInteger(rating) && rating >= 0 && rating <= 5) ? rating : 0
+      ]
+    );
+    const newBadges = await checkAndAwardBadges(user_id ? parseInt(user_id) : null, device_id || null);
+    res.json({ success: true, id: result.rows[0].id, new_badges: newBadges });
+  } catch (e) {
+    console.error("[Save AR] Error:", e.message);
+    res.status(500).json({ error: "Failed to save landmark" });
+  } finally {
+    client.release();
+  }
+});
+// ──────────────────────────────────────────────────────────────────────────────
+
 app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
@@ -908,15 +1235,13 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
 
     const filePath = req.file.path;
     const imageFilename = req.file.filename;
-    const imageData = fs.readFileSync(filePath);
-    const base64Image = imageData.toString("base64");
     const mimeType = req.file.mimetype || "image/jpeg";
     const language = req.body?.language || "en";
     const langName = LANG_NAMES[language] || "English";
 
     console.log(`[Analyze] Language requested: ${language} (${langName})`);
 
-    // ── Scan limit enforcement ──────────────────────────────────
+    // ── Read file + scan limit check in parallel ────────────────
     const PLAN_LIMITS = {
       free: planLimitsCache.free?.scans_per_day ?? 5,
       plus: planLimitsCache.plus?.scans_per_day ?? 50,
@@ -924,57 +1249,42 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
     };
     const rawUserId = req.body?.user_id || null;
     const rawDeviceId = req.body?.device_id || null;
-    let limitUserId = rawUserId ? parseInt(rawUserId) : null;
+    const limitUserId = rawUserId ? parseInt(rawUserId) : null;
+
+    const userQuery = limitUserId
+      ? pool.query("SELECT id, plan, daily_scans, scan_date FROM users WHERE id = $1", [limitUserId])
+      : rawDeviceId
+        ? pool.query("SELECT id, plan, daily_scans, scan_date FROM users WHERE device_id = $1 ORDER BY id DESC LIMIT 1", [rawDeviceId])
+        : Promise.resolve({ rows: [] });
+
+    const [imageData, uRes] = await Promise.all([
+      fs.promises.readFile(filePath),
+      userQuery,
+    ]);
+    const base64Image = imageData.toString("base64");
+
     let userPlan = "free";
     let scansToday = 0;
-
-    let scanUserId = null; // track which user DB row to increment after landmark check
+    let scanUserId = null;
     let scanIsNewDay = false;
 
-    if (limitUserId) {
-      const uRes = await pool.query(
-        "SELECT id, plan, daily_scans, scan_date FROM users WHERE id = $1", [limitUserId]
-      );
-      if (uRes.rows.length > 0) {
-        const u = uRes.rows[0];
-        userPlan = u.plan || "free";
-        const today = new Date().toISOString().split("T")[0];
-        const savedDate = u.scan_date ? u.scan_date.toISOString().split("T")[0] : null;
-        scansToday = savedDate === today ? u.daily_scans : 0;
-        const limit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-        if (scansToday >= limit) {
-          fs.unlinkSync(filePath);
-          return res.status(429).json({
-            error: "scan_limit_reached",
-            message: `Daily limit of ${limit} scans reached for your ${userPlan} plan.`,
-            plan: userPlan, scans_today: scansToday, scan_limit: limit,
-          });
-        }
-        scanUserId = u.id;
-        scanIsNewDay = savedDate !== today;
+    if (uRes.rows.length > 0) {
+      const u = uRes.rows[0];
+      userPlan = u.plan || "free";
+      const today = new Date().toISOString().split("T")[0];
+      const savedDate = u.scan_date ? u.scan_date.toISOString().split("T")[0] : null;
+      scansToday = savedDate === today ? u.daily_scans : 0;
+      const limit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+      if (scansToday >= limit) {
+        fs.unlink(filePath, () => {});
+        return res.status(429).json({
+          error: "scan_limit_reached",
+          message: `Daily limit of ${limit} scans reached for your ${userPlan} plan.`,
+          plan: userPlan, scans_today: scansToday, scan_limit: limit,
+        });
       }
-    } else if (rawDeviceId) {
-      const uRes = await pool.query(
-        "SELECT id, plan, daily_scans, scan_date FROM users WHERE device_id = $1 ORDER BY id DESC LIMIT 1", [rawDeviceId]
-      );
-      if (uRes.rows.length > 0) {
-        const u = uRes.rows[0];
-        userPlan = u.plan || "free";
-        const today = new Date().toISOString().split("T")[0];
-        const savedDate = u.scan_date ? u.scan_date.toISOString().split("T")[0] : null;
-        scansToday = savedDate === today ? u.daily_scans : 0;
-        const limit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-        if (scansToday >= limit) {
-          fs.unlinkSync(filePath);
-          return res.status(429).json({
-            error: "scan_limit_reached",
-            message: `Daily limit of ${limit} scans reached for your ${userPlan} plan.`,
-            plan: userPlan, scans_today: scansToday, scan_limit: limit,
-          });
-        }
-        scanUserId = u.id;
-        scanIsNewDay = savedDate !== today;
-      }
+      scanUserId = u.id;
+      scanIsNewDay = savedDate !== today;
     }
     // ────────────────────────────────────────────────────────────
 
@@ -1004,7 +1314,9 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
   "nearby2_name": "Name of another nearby attraction (in ${langName})",
   "nearby2_category": "Category (in ${langName})",
   "nearby3_name": "Name of a third nearby attraction (in ${langName})",
-  "nearby3_category": "Category (in ${langName})"
+  "nearby3_category": "Category (in ${langName})",
+  "landmark_lat": <exact decimal latitude of the landmark itself, e.g. 41.8902>,
+  "landmark_lng": <exact decimal longitude of the landmark itself, e.g. 12.4922>
 }`;
 
     // Single retry with short wait for rate limits
@@ -1031,27 +1343,14 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
             retryable: false
           });
         }
-        // Per-minute rate limit — wait 15s and retry once
-        console.log("[Analyze] Rate limited (429), retrying once after 15s...");
-        await new Promise(resolve => setTimeout(resolve, 15000));
-        try {
-          result = await model.generateContent([
-            prompt,
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Image,
-              },
-            },
-          ]);
-        } catch (retryError) {
-          console.error("[Analyze] Retry also failed:", retryError.status, retryError.message?.substring(0, 200));
-          return res.status(429).json({
-            error: "API rate limited",
-            message: "Server is busy. Please try again in a minute.",
-            retryable: true
-          });
-        }
+        // Per-minute rate limit — return immediately so the app can show feedback
+        console.log("[Analyze] Rate limited (429) — returning retryable error immediately");
+        fs.unlink(filePath, () => {});
+        return res.status(429).json({
+          error: "API rate limited",
+          message: "Server is busy. Please try again in a moment.",
+          retryable: true
+        });
       } else {
         throw apiError;
       }
@@ -1076,6 +1375,16 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
     // Reject non-landmark images — do NOT count this against daily limit
     if (parsed.not_a_landmark === true) {
       console.log("[Analyze] Not a landmark — rejecting without counting scan");
+      return res.status(422).json({
+        error: "not_a_landmark",
+        message: "This doesn't appear to be a landmark or place of interest. Please try again with a photo of a real-world landmark, building, or monument."
+      });
+    }
+
+    // Reject vague Gemini responses where location/name couldn't be identified
+    const vaguePatterns = /discernible|cannot determine|unidentifiable|not identifiable|unknown location|cannot be identified|indeterminate|not recognizable/i;
+    if (!parsed.name || vaguePatterns.test(parsed.name) || vaguePatterns.test(parsed.location || "")) {
+      console.log("[Analyze] Vague response from Gemini — rejecting:", parsed.name, parsed.location);
       return res.status(422).json({
         error: "not_a_landmark",
         message: "This doesn't appear to be a landmark or place of interest. Please try again with a photo of a real-world landmark, building, or monument."
@@ -1127,14 +1436,17 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
     const longitude = req.body?.longitude ? parseFloat(req.body.longitude) : null;
     console.log("Received fields - user_id:", userId, "device_id:", deviceId, "language:", language, "latitude:", req.body?.latitude, "longitude:", req.body?.longitude);
 
+    const landmarkLat = (typeof parsed.landmark_lat === "number" && isFinite(parsed.landmark_lat)) ? parsed.landmark_lat : null;
+    const landmarkLng = (typeof parsed.landmark_lng === "number" && isFinite(parsed.landmark_lng)) ? parsed.landmark_lng : null;
+
     const insertResult = await pool.query(
       `INSERT INTO landmarks (
         user_id, device_id, name, location, year_built, status, architect, capacity,
         narrative_p1, narrative_quote, narrative_p2,
         nearby1_name, nearby1_category, nearby2_name, nearby2_category,
         nearby3_name, nearby3_category, image_filename, latitude, longitude, language,
-        tokens_input, tokens_output, tokens_total
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id`,
+        tokens_input, tokens_output, tokens_total, landmark_lat, landmark_lng
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) RETURNING id`,
       [
         userId,
         deviceId,
@@ -1160,20 +1472,147 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
         tokensInput,
         tokensOutput,
         tokensTotal,
+        landmarkLat,
+        landmarkLng,
       ]
     );
+
+    const newBadges = await checkAndAwardBadges(userId ? parseInt(userId) : null, deviceId);
 
     res.json({
       id: insertResult.rows[0].id, latitude, longitude, language, ...parsed,
       plan: userPlan,
       scans_today: scansToday,
       scan_limit: PLAN_LIMITS[userPlan] || PLAN_LIMITS.free,
+      new_badges: newBadges,
     });
   } catch (error) {
     console.error("Analysis error:", error);
     res.status(500).json({ error: "Analysis failed" });
   }
 });
+
+// Backfill landmark_lat/landmark_lng for existing rows using Google Geocoding
+async function backfillLandmarkCoordinates() {
+  try {
+    const rows = await pool.query(
+      `SELECT id, name, location FROM landmarks
+       WHERE landmark_lat IS NULL AND location != ''
+       LIMIT 100`
+    );
+    if (rows.rows.length === 0) return;
+    console.log(`[Backfill] Geocoding ${rows.rows.length} landmarks...`);
+    for (const row of rows.rows) {
+      try {
+        const query = encodeURIComponent(`${row.name} ${row.location}`);
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GOOGLE_PLACES_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === "OK" && data.results.length > 0) {
+          const loc = data.results[0].geometry.location;
+          await pool.query(
+            "UPDATE landmarks SET landmark_lat = $1, landmark_lng = $2 WHERE id = $3",
+            [loc.lat, loc.lng, row.id]
+          );
+        }
+        await new Promise(r => setTimeout(r, 50)); // avoid rate limit
+      } catch (e) {
+        console.error(`[Backfill] Failed for id=${row.id}:`, e.message);
+      }
+    }
+    console.log("[Backfill] Done");
+  } catch (e) {
+    console.error("[Backfill] Error:", e.message);
+  }
+}
+
+// Run backfill once on startup (non-blocking)
+backfillLandmarkCoordinates();
+
+// Check and award badges after a landmark save
+async function checkAndAwardBadges(userId, deviceId) {
+  try {
+    const idParam = userId ? [userId] : [deviceId];
+    const whereClause = userId ? "user_id = $1" : "device_id = $1";
+
+    // Get counts
+    const countResult = await pool.query(
+      `SELECT
+        COUNT(*) AS total_scans,
+        COUNT(*) FILTER (WHERE is_ar = 1) AS ar_scans,
+        COUNT(*) FILTER (WHERE rating > 0) AS ratings_given,
+        COUNT(*) FILTER (WHERE is_saved = 1) AS saved_count
+       FROM landmarks WHERE ${whereClause}`,
+      idParam
+    );
+    const stats = countResult.rows[0];
+    const totalScans = parseInt(stats.total_scans) || 0;
+    const arScans = parseInt(stats.ar_scans) || 0;
+    const ratingsGiven = parseInt(stats.ratings_given) || 0;
+    const savedCount = parseInt(stats.saved_count) || 0;
+
+    // Count distinct countries from location strings
+    const locResult = await pool.query(
+      `SELECT DISTINCT location FROM landmarks WHERE ${whereClause} AND location != ''`,
+      idParam
+    );
+    const countrySet = new Set(locResult.rows.map(r => {
+      const parts = r.location.split(",").map(p => p.trim());
+      return parts.length >= 2 ? parts[parts.length - 1] : "";
+    }).filter(Boolean));
+    const countries = countrySet.size;
+
+    const badgeConditions = [
+      { id: "first_scan",     met: totalScans >= 1 },
+      { id: "explorer_5",     met: totalScans >= 5 },
+      { id: "adventurer_10",  met: totalScans >= 10 },
+      { id: "traveler_25",    met: totalScans >= 25 },
+      { id: "legend_50",      met: totalScans >= 50 },
+      { id: "first_ar",       met: arScans >= 1 },
+      { id: "ar_explorer",    met: arScans >= 5 },
+      { id: "globetrotter",   met: countries >= 3 },
+      { id: "world_explorer", met: countries >= 5 },
+      { id: "critic",         met: ratingsGiven >= 1 },
+      { id: "journalist",     met: savedCount >= 1 },
+    ];
+
+    // Get already earned badges
+    const earnedQuery = userId
+      ? `SELECT badge_id FROM user_badges WHERE user_id = $1`
+      : `SELECT badge_id FROM user_badges WHERE device_id = $1 AND user_id IS NULL`;
+    const earnedResult = await pool.query(earnedQuery, idParam);
+    const earnedSet = new Set(earnedResult.rows.map(r => r.badge_id));
+
+    // Award new badges
+    const newBadges = [];
+    for (const { id, met } of badgeConditions) {
+      if (met && !earnedSet.has(id)) {
+        try {
+          if (userId) {
+            await pool.query(
+              "INSERT INTO user_badges (user_id, device_id, badge_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+              [userId, deviceId || null, id]
+            );
+          } else {
+            await pool.query(
+              "INSERT INTO user_badges (user_id, device_id, badge_id) VALUES (NULL, $1, $2) ON CONFLICT DO NOTHING",
+              [deviceId, id]
+            );
+          }
+          const bRes = await pool.query("SELECT * FROM badges WHERE id = $1", [id]);
+          if (bRes.rows.length > 0) newBadges.push(bRes.rows[0]);
+        } catch (e) {
+          console.error(`[Badges] Failed to award ${id}:`, e.message);
+        }
+      }
+    }
+
+    return newBadges;
+  } catch (e) {
+    console.error("[Badges] checkAndAwardBadges error:", e.message);
+    return [];
+  }
+}
 
 // Verify landmark ownership helper
 async function verifyLandmarkOwner(landmarkId, userId, deviceId) {
@@ -1219,6 +1658,155 @@ app.put("/api/landmarks/:id/save", async (req, res) => {
   }
 });
 
+// Toggle favorite (heart) for a landmark
+app.put("/api/landmarks/:id/favorite", async (req, res) => {
+  try {
+    const { user_id, device_id } = req.body;
+    const ownership = await verifyLandmarkOwner(req.params.id, user_id, device_id);
+    if (!ownership.found) return res.status(404).json({ error: "Landmark not found" });
+    if (!ownership.owned) return res.status(403).json({ error: "Forbidden" });
+
+    // Toggle: flip 0→1 or 1→0
+    const result = await pool.query(
+      "UPDATE landmarks SET is_favorited = CASE WHEN is_favorited = 1 THEN 0 ELSE 1 END WHERE id = $1 RETURNING is_favorited",
+      [req.params.id]
+    );
+    const newValue = result.rows[0]?.is_favorited ?? 0;
+    res.json({ success: true, id: parseInt(req.params.id), is_favorited: newValue });
+  } catch (error) {
+    console.error("Favorite toggle error:", error);
+    res.status(500).json({ error: "Failed to toggle favorite" });
+  }
+});
+
+// Search landmark by name — ask Gemini to generate data for a given query
+app.get("/api/landmarks/search", geminiTextLimiter, async (req, res) => {
+  try {
+    const q = (req.query.q || "").trim();
+    const language = req.query.language || "en";
+    const langName = LANG_NAMES[language] || "English";
+    const deviceId = (req.query.device_id || "").trim();
+    if (!q) return res.status(400).json({ error: "Missing query" });
+    if (!deviceId) return res.status(400).json({ error: "device_id is required" });
+    const deviceCheck = await pool.query("SELECT id FROM users WHERE device_id = $1 LIMIT 1", [deviceId]);
+    if (deviceCheck.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const prompt = `Generate detailed information about the following landmark or place: "${q}".
+Respond ONLY with a JSON object in this exact format, no markdown, no code fences. ALL text values must be in ${langName}:
+{
+  "name": "Official name of the landmark (in ${langName})",
+  "location": "Full address or City, Country (in ${langName})",
+  "year_built": "Year or era built (in ${langName})",
+  "status": "UNESCO Site / National Monument / Historic Landmark / etc. (in ${langName})",
+  "architect": "Architect or dynasty/civilization that built it (in ${langName})",
+  "capacity": "Visitor capacity or notable size metric (in ${langName})",
+  "narrative_p1": "A 2-3 sentence paragraph about the landmark history and significance. (in ${langName})",
+  "narrative_quote": "A memorable quote or fact about the landmark. (in ${langName})",
+  "narrative_p2": "A 2-3 sentence paragraph about an interesting architectural or cultural detail. (in ${langName})",
+  "nearby1_name": "Name of a nearby attraction (in ${langName})",
+  "nearby1_category": "Category like Museum, Park, Monument, etc. (in ${langName})",
+  "nearby2_name": "Name of another nearby attraction (in ${langName})",
+  "nearby2_category": "Category (in ${langName})",
+  "nearby3_name": "Name of a third nearby attraction (in ${langName})",
+  "nearby3_category": "Category (in ${langName})",
+  "landmark_lat": <exact decimal latitude of the landmark itself>,
+  "landmark_lng": <exact decimal longitude of the landmark itself>
+}
+If the query does not match any known real-world landmark, respond with: {"not_found": true}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text()
+      .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(raw);
+    if (parsed.not_found) return res.status(404).json({ error: "Landmark not found" });
+    res.json(parsed);
+  } catch (e) {
+    console.error("[LandmarkSearch]", e.message);
+    res.status(500).json({ error: "Search failed" });
+  }
+});
+
+// Correct a saved landmark with new AI-generated data
+app.patch("/api/landmarks/:id/correct", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { user_id, device_id, name, location, year_built, status, architect, capacity,
+            narrative_p1, narrative_quote, narrative_p2,
+            nearby1_name, nearby1_category, nearby2_name, nearby2_category,
+            nearby3_name, nearby3_category, landmark_lat, landmark_lng } = req.body;
+
+    // Verify ownership
+    const check = await pool.query(
+      "SELECT id FROM landmarks WHERE id = $1 AND (user_id = $2 OR device_id = $3)",
+      [id, user_id || null, device_id || null]
+    );
+    if (check.rows.length === 0) return res.status(403).json({ error: "Not authorized" });
+
+    await pool.query(
+      `UPDATE landmarks SET
+        name=$1, location=$2, year_built=$3, status=$4, architect=$5, capacity=$6,
+        narrative_p1=$7, narrative_quote=$8, narrative_p2=$9,
+        nearby1_name=$10, nearby1_category=$11, nearby2_name=$12, nearby2_category=$13,
+        nearby3_name=$14, nearby3_category=$15, landmark_lat=$16, landmark_lng=$17
+       WHERE id=$18`,
+      [name, location, year_built, status, architect, capacity,
+       narrative_p1, narrative_quote, narrative_p2,
+       nearby1_name, nearby1_category, nearby2_name, nearby2_category,
+       nearby3_name, nearby3_category, landmark_lat, landmark_lng, id]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error("[CorrectLandmark]", e.message);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
+// Heatmap — anonymized scan coordinates for all users
+app.get("/api/landmarks/heatmap", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         ROUND(landmark_lat::numeric, 3) AS lat,
+         ROUND(landmark_lng::numeric, 3) AS lng,
+         COUNT(*) AS weight
+       FROM landmarks
+       WHERE landmark_lat IS NOT NULL AND landmark_lng IS NOT NULL
+       GROUP BY ROUND(landmark_lat::numeric, 3), ROUND(landmark_lng::numeric, 3)
+       LIMIT 2000`
+    );
+    const points = result.rows.map(r => ({
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lng),
+      weight: parseInt(r.weight),
+    }));
+    res.json(points);
+  } catch (error) {
+    console.error("Heatmap error:", error);
+    res.status(500).json({ error: "Failed to fetch heatmap data" });
+  }
+});
+
+// Trending Spots — all users' favorited AR landmarks, shuffled
+app.get("/api/landmarks/favorites", async (req, res) => {
+  try {
+    const sql = "SELECT * FROM landmarks WHERE is_favorited = 1 AND is_ar = 1 ORDER BY RANDOM() LIMIT 20";
+    const params = [];
+
+    const result = await pool.query(sql, params);
+    const rows = result.rows.map((row) => {
+      row.image_url = row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : "";
+      return row;
+    });
+    res.json(rows);
+  } catch (error) {
+    console.error("Favorites error:", error);
+    res.status(500).json({ error: "Failed to fetch favorites" });
+  }
+});
+
 // Delete a landmark
 app.delete("/api/landmarks/:id", async (req, res) => {
   try {
@@ -1250,18 +1838,22 @@ app.get("/api/user/:id/landmarks", async (req, res) => {
     console.log(`[Landmarks] Request: user_id=${req.params.id}, query=`, req.query);
     const savedOnly = req.query.saved === "true";
     const deviceId = req.query.device_id || null;
+    const userId = parseInt(req.params.id);
+
+    // Verify the requesting device owns this user account
+    if (!deviceId) return res.status(400).json({ error: "device_id is required" });
+    const ownerCheck = await pool.query(
+      "SELECT id FROM users WHERE id = $1 AND device_id = $2 LIMIT 1",
+      [userId, deviceId]
+    );
+    if (ownerCheck.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
 
     let sql;
     let params;
 
-    if (deviceId) {
-      // Match landmarks by user_id OR device_id (covers guest + google on same device)
-      sql = "SELECT DISTINCT ON (id) * FROM landmarks WHERE (user_id = $1 OR device_id = $2)";
-      params = [req.params.id, deviceId];
-    } else {
-      sql = "SELECT * FROM landmarks WHERE user_id = $1";
-      params = [req.params.id];
-    }
+    // Match landmarks by user_id OR device_id (covers guest + google on same device)
+    sql = "SELECT DISTINCT ON (id) * FROM landmarks WHERE (user_id = $1 OR device_id = $2)";
+    params = [userId, deviceId];
 
     if (savedOnly) sql += " AND is_saved = 1";
     sql += " ORDER BY id DESC";
@@ -1270,13 +1862,48 @@ app.get("/api/user/:id/landmarks", async (req, res) => {
     const result = await pool.query(sql, params);
     console.log(`[Landmarks] Returned ${result.rows.length} rows`);
     const rows = result.rows.map((row) => {
-      row.image_url = `/api/uploads/${row.image_filename}`;
+      row.image_url = row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : "";
       return row;
     });
     res.json(rows);
   } catch (error) {
     console.error(`[Landmarks] Error:`, error.message);
     res.status(500).json({ error: "Failed to fetch landmarks" });
+  }
+});
+
+// Memory notifications — landmarks scanned exactly 1 year ago today
+app.get("/api/landmarks/memories", async (req, res) => {
+  try {
+    const userId = req.query.user_id ? parseInt(req.query.user_id) : null;
+    const deviceId = req.query.device_id;
+    if (!userId && !deviceId) return res.status(400).json({ error: "user_id or device_id required" });
+
+    let result;
+    if (userId && userId > 0) {
+      result = await pool.query(
+        "SELECT * FROM landmarks WHERE user_id = $1 AND is_saved = 1 AND DATE(created_at) = CURRENT_DATE - INTERVAL '1 year' ORDER BY id DESC",
+        [userId]
+      );
+    } else {
+      result = await pool.query(
+        "SELECT * FROM landmarks WHERE device_id = $1 AND is_saved = 1 AND DATE(created_at) = CURRENT_DATE - INTERVAL '1 year' ORDER BY id DESC",
+        [deviceId]
+      );
+    }
+
+    const rows = result.rows.map(row => ({
+      ...row,
+      image_url: row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : ""
+    }));
+    res.json(rows);
+  } catch (error) {
+    console.error("[Memories]", error.message);
+    res.status(500).json({ error: "Failed to fetch memories" });
   }
 });
 
@@ -1296,7 +1923,9 @@ app.get("/api/landmarks/by-device", async (req, res) => {
     const result = await pool.query(sql, [deviceId]);
     console.log(`[LandmarksByDevice] Returned ${result.rows.length} rows`);
     const rows = result.rows.map((row) => {
-      row.image_url = `/api/uploads/${row.image_filename}`;
+      row.image_url = row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : "";
       return row;
     });
     res.json(rows);
@@ -1349,7 +1978,9 @@ app.get("/api/landmarks/nearby", async (req, res) => {
     );
 
     const rows = result.rows.map((row) => {
-      row.image_url = `/api/uploads/${row.image_filename}`;
+      row.image_url = row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : "";
       return row;
     });
     res.json(rows);
@@ -1383,7 +2014,9 @@ app.get("/api/history", async (req, res) => {
 
     const result = await pool.query(sql, params);
     const rows = result.rows.map((row) => {
-      row.image_url = `/api/uploads/${row.image_filename}`;
+      row.image_url = row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : "";
       return row;
     });
     res.json(rows);
@@ -1561,6 +2194,29 @@ app.get("/api/places/photo", async (req, res) => {
   } catch (error) {
     console.error("Places photo error:", error);
     res.status(500).json({ error: "Failed to fetch place photo" });
+  }
+});
+
+// ── Backfill missing Wikipedia images for existing NULL records ───────────────
+app.post("/api/admin/backfill-images", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name, location FROM landmarks WHERE image_filename IS NULL OR image_filename = ''"
+    );
+    const rows = result.rows;
+    let updated = 0;
+    for (const row of rows) {
+      const url = await fetchWikipediaImage(row.name, row.location || "");
+      if (url) {
+        await pool.query("UPDATE landmarks SET image_filename = $1 WHERE id = $2", [url, row.id]);
+        updated++;
+        console.log(`[Backfill] id=${row.id} "${row.name}" → ${url}`);
+      }
+    }
+    res.json({ total: rows.length, updated });
+  } catch (e) {
+    console.error("[Backfill] Error:", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -1744,6 +2400,95 @@ app.get("/api/admin/plan-limits", adminAuth, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM plan_limits ORDER BY plan");
     res.json(result.rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Admin: Subscription Audit ────────────────────────────────────
+app.get("/api/admin/subscription-audit", adminAuth, async (req, res) => {
+  try {
+    const keyPath = path.join(__dirname, "google-play-key.json");
+    const auth = new google.auth.GoogleAuth({
+      keyFile: keyPath,
+      scopes: ["https://www.googleapis.com/auth/androidpublisher"]
+    });
+    const androidPublisher = google.androidpublisher({ version: "v3", auth });
+    const packageName = "online.mnaks.sightai";
+
+    // Reverse PLAN_MAP: plan → productId
+    const PLAN_TO_PRODUCT = {};
+    for (const [productId, plan] of Object.entries(PLAN_MAP)) {
+      PLAN_TO_PRODUCT[plan] = productId;
+    }
+
+    // All paid users with a purchase token
+    const dbResult = await pool.query(`
+      SELECT id, email, display_name, plan, purchase_token, subscription_expires_at
+      FROM users
+      WHERE plan != 'free' AND purchase_token IS NOT NULL
+      ORDER BY id
+    `);
+
+    const rows = dbResult.rows;
+    const results = [];
+
+    for (const user of rows) {
+      const productId = PLAN_TO_PRODUCT[user.plan];
+      let googleStatus = null;
+      let googleError = null;
+
+      if (productId) {
+        try {
+          const r = await androidPublisher.purchases.subscriptions.get({
+            packageName,
+            subscriptionId: productId,
+            token: user.purchase_token
+          });
+          const sub = r.data;
+          const expiryMs = parseInt(sub.expiryTimeMillis || "0");
+          const paymentState = sub.paymentState;
+          googleStatus = {
+            active: expiryMs > Date.now() && (paymentState === 1 || paymentState === 2),
+            paymentState,
+            expiryMs,
+            expiryDate: new Date(expiryMs).toISOString(),
+            autoRenewing: sub.autoRenewing
+          };
+        } catch (e) {
+          googleError = e.message || "Google API error";
+        }
+      } else {
+        googleError = "Unknown productId for plan: " + user.plan;
+      }
+
+      const dbExpiryMs = user.subscription_expires_at ? new Date(user.subscription_expires_at).getTime() : 0;
+      const dbActive = dbExpiryMs > Date.now();
+      const googleActive = googleStatus ? googleStatus.active : null;
+      const match = googleActive === null ? null : (dbActive === googleActive);
+
+      results.push({
+        id: user.id,
+        email: user.email || "",
+        name: user.display_name || "",
+        plan: user.plan,
+        db_active: dbActive,
+        db_expiry: user.subscription_expires_at,
+        google_active: googleActive,
+        google_payment_state: googleStatus ? googleStatus.paymentState : null,
+        google_expiry: googleStatus ? googleStatus.expiryDate : null,
+        google_auto_renew: googleStatus ? googleStatus.autoRenewing : null,
+        match,
+        error: googleError
+      });
+    }
+
+    const total = results.length;
+    const matched = results.filter(r => r.match === true).length;
+    const mismatched = results.filter(r => r.match === false).length;
+    const errors = results.filter(r => r.error !== null).length;
+
+    res.json({ total, matched, mismatched, errors, rows: results });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

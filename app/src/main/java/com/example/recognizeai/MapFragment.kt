@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.location.Geocoder
 import android.location.Location
 import android.net.Uri
 import android.os.Bundle
@@ -13,11 +14,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -33,6 +38,10 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.TileOverlay
+import com.google.android.gms.maps.model.TileOverlayOptions
+import com.google.maps.android.heatmaps.HeatmapTileProvider
+import com.google.maps.android.heatmaps.WeightedLatLng
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,6 +69,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val markerDataMap = mutableMapOf<String, JSONObject>()
     private lateinit var session: SessionManager
     private var selectedPlace: JSONObject? = null
+
+    private var heatmapOverlay: TileOverlay? = null
+    private var isHeatmapVisible = false
+    private var btnToggleHeatmap: FrameLayout? = null
+    private var tvHeatmapLabel: TextView? = null
+    private var etMapSearch: EditText? = null
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -103,6 +118,25 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             moveToMyLocation()
         }
 
+        btnToggleHeatmap = view.findViewById(R.id.btnToggleHeatmap)
+        tvHeatmapLabel = view.findViewById(R.id.tvHeatmapLabel)
+        btnToggleHeatmap?.setOnClickListener {
+            if (SessionManager(requireContext()).isPlus) {
+                toggleHeatmap()
+            } else {
+                startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
+            }
+        }
+
+        etMapSearch = view.findViewById(R.id.etMapSearch)
+        etMapSearch?.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val query = etMapSearch?.text?.toString()?.trim() ?: ""
+                if (query.isNotEmpty()) searchLocation(query)
+                true
+            } else false
+        }
+
         btnExploreAI?.setOnClickListener {
             val data = selectedPlace ?: return@setOnClickListener
             val source = data.optString("_source", "")
@@ -123,7 +157,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             } else {
                 // Our landmark — open detail page
-                val imageUrl = "${SessionManager.BASE_URL}${data.optString("image_url", "")}"
+                val rawUrl = data.optString("image_url", "")
+                val imageUrl = if (rawUrl.startsWith("http")) rawUrl else "${SessionManager.BASE_URL}$rawUrl"
                 val intent = Intent(requireContext(), LandmarkDetailActivity::class.java).apply {
                     putExtra("photo_uri", imageUrl)
                     putExtra("server_id", data.optLong("id", -1L))
@@ -487,6 +522,121 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             } catch (e: Exception) {
                 Log.e("MapFragment", "Failed to load nearby landmarks", e)
+            }
+        }
+    }
+
+    private fun toggleHeatmap() {
+        if (heatmapOverlay == null) {
+            // First time — fetch data and show
+            loadHeatmap()
+        } else {
+            isHeatmapVisible = !isHeatmapVisible
+            heatmapOverlay?.isVisible = isHeatmapVisible
+            updateHeatmapButton()
+        }
+    }
+
+    private fun updateHeatmapButton() {
+        tvHeatmapLabel?.text = if (isHeatmapVisible)
+            getString(R.string.heatmap_on)
+        else
+            getString(R.string.heatmap_off)
+    }
+
+    private fun loadHeatmap() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = Request.Builder()
+                    .url("${SessionManager.BASE_URL}/api/landmarks/heatmap")
+                    .get().build()
+                val response = client.newCall(request).execute()
+                val body = response.body?.string() ?: "[]"
+                val arr = JSONArray(body)
+
+                val points = mutableListOf<WeightedLatLng>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    val lat = obj.optDouble("lat", Double.NaN)
+                    val lng = obj.optDouble("lng", Double.NaN)
+                    val weight = obj.optDouble("weight", 1.0)
+                    if (!lat.isNaN() && !lng.isNaN()) {
+                        points.add(WeightedLatLng(LatLng(lat, lng), weight))
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (points.isEmpty()) {
+                        android.widget.Toast.makeText(
+                            requireContext(),
+                            "No heatmap data yet — scan more landmarks!",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        return@withContext
+                    }
+                    val map = googleMap ?: return@withContext
+                    val maxWeight = points.maxOfOrNull { it.intensity } ?: 1.0
+                    val provider = HeatmapTileProvider.Builder()
+                        .weightedData(points)
+                        .radius(50)
+                        .opacity(0.8)
+                        .maxIntensity(maxWeight.coerceAtLeast(1.0))
+                        .build()
+                    heatmapOverlay = map.addTileOverlay(
+                        TileOverlayOptions().tileProvider(provider)
+                    )
+                    isHeatmapVisible = true
+                    updateHeatmapButton()
+                }
+            } catch (e: Exception) {
+                Log.e("MapFragment", "Failed to load heatmap", e)
+            }
+        }
+    }
+
+    private fun searchLocation(query: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val geocoder = Geocoder(requireContext())
+                @Suppress("DEPRECATION")
+                val results = geocoder.getFromLocationName(query, 1)
+                withContext(Dispatchers.Main) {
+                    if (!results.isNullOrEmpty()) {
+                        val address = results[0]
+                        val latLng = LatLng(address.latitude, address.longitude)
+                        // Zoom level: country=5, city=11, neighborhood=14
+                        val zoom = when {
+                            address.featureName == query && address.locality == null -> 5f
+                            address.locality != null -> 12f
+                            else -> 10f
+                        }
+                        googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom))
+                        // Clear existing markers but preserve heatmap state
+                        val wasHeatmapVisible = isHeatmapVisible
+                        googleMap?.clear()
+                        markerDataMap.clear()
+                        heatmapOverlay = null
+                        isHeatmapVisible = false
+                        updateHeatmapButton()
+                        loadNearbyLandmarks(address.latitude, address.longitude)
+                        loadNearbyTouristPlaces(address.latitude, address.longitude)
+                        // Re-enable heatmap if it was on
+                        if (wasHeatmapVisible) {
+                            toggleHeatmap()
+                        }
+                        // Hide keyboard
+                        val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        imm.hideSoftInputFromWindow(etMapSearch?.windowToken, 0)
+                        etMapSearch?.clearFocus()
+                    } else {
+                        Toast.makeText(requireContext(), getString(R.string.map_search_not_found), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MapFragment", "Geocoder error", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), getString(R.string.map_search_not_found), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

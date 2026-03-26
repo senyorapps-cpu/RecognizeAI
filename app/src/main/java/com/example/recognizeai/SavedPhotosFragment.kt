@@ -10,7 +10,9 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
@@ -67,7 +69,10 @@ class SavedPhotosFragment : Fragment() {
         val rating: Int,
         val createdAt: String,
         val language: String = "en",
-        val isPending: Boolean = false
+        val isPending: Boolean = false,
+        val isFavorited: Int = 0,
+        val landmarkLat: Double = 0.0,
+        val landmarkLng: Double = 0.0
     ) {
         fun extractCountry(): String {
             val parts = location.split(",").map { it.trim() }
@@ -84,6 +89,73 @@ class SavedPhotosFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
         loadSavedItems()
+
+        binding.btnExportPdf.setOnClickListener {
+            if (SessionManager(requireContext()).isPlus) {
+                exportPdf()
+            } else {
+                startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
+            }
+        }
+    }
+
+    private fun exportPdf() {
+        val ctx = context ?: return
+        if (allItems.isEmpty()) {
+            Toast.makeText(ctx, getString(R.string.export_no_items), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Pre-capture everything needed by async callbacks to avoid fragment-detach crashes
+        val msgGenerating = getString(R.string.export_generating)
+        val msgFailed = getString(R.string.export_failed)
+        val shareTitle = getString(R.string.export_share_title)
+        val authority = "${ctx.packageName}.fileprovider"
+        val userName = SessionManager(ctx).displayName
+
+        Toast.makeText(ctx, msgGenerating, Toast.LENGTH_SHORT).show()
+
+        var tvProgress: TextView? = null
+        val dialog: Dialog? = try {
+            Dialog(ctx).also { d ->
+                d.setContentView(R.layout.dialog_export_progress)
+                d.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                d.window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                d.setCancelable(false)
+                d.show()
+                tvProgress = d.findViewById(R.id.tvExportProgress)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ExportPdf", "Dialog inflate failed: ${e.javaClass.simpleName}: ${e.message}", e)
+            null
+        }
+
+        JournalPdfExporter(ctx).export(
+            items = allItems.toList(),
+            userName = userName,
+            onProgress = { current, total ->
+                tvProgress?.text = if (current == 0) msgGenerating else "$current / $total"
+            },
+            onDone = { file ->
+                if (dialog?.isShowing == true) dialog.dismiss()
+                if (file != null) {
+                    try {
+                        val uri = FileProvider.getUriForFile(ctx, authority, file)
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, shareTitle))
+                    } catch (e: Exception) {
+                        android.util.Log.e("SavedPhotos", "Share failed", e)
+                        Toast.makeText(ctx, msgFailed, Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(ctx, msgFailed, Toast.LENGTH_LONG).show()
+                }
+            }
+        )
     }
 
     override fun onResume() {
@@ -119,6 +191,7 @@ class SavedPhotosFragment : Fragment() {
                     putExtra("nearby3_category", item.nearby3Category)
                     putExtra("rating", item.rating)
                     putExtra("language", item.language)
+                    putExtra("is_favorited", item.isFavorited)
                     putExtra("from_saved", true)
                 }
                 startActivity(intent)
@@ -175,15 +248,19 @@ class SavedPhotosFragment : Fragment() {
         for (i in 0 until arr.length()) {
             val obj = arr.getJSONObject(i)
             val matchById = item.serverId > 0 && obj.optLong("server_id", -1L) == item.serverId
-            val matchByUri = obj.optString("photo_uri") == item.imageUrl
+            val matchByUri = item.imageUrl.isNotEmpty() && obj.optString("photo_uri") == item.imageUrl
             if (!matchById && !matchByUri) {
                 newArr.put(obj)
             }
         }
         prefs.edit().putString("landmarks", newArr.toString()).apply()
 
-        // Remove from lists and refresh chips + grid
+        // Remove from lists, reset stale country filter, refresh UI
         allItems.remove(item)
+        val deletedCountry = item.extractCountry()
+        if (selectedCountry == deletedCountry && allItems.none { it.extractCountry() == deletedCountry }) {
+            selectedCountry = null
+        }
         buildCountryChips()
         applyFilter()
     }
@@ -223,7 +300,7 @@ class SavedPhotosFragment : Fragment() {
                             serverId = obj.optLong("id", -1L),
                             name = obj.optString("name"),
                             location = obj.optString("location"),
-                            imageUrl = "${SessionManager.BASE_URL}${obj.optString("image_url")}",
+                            imageUrl = buildImageUrl(obj.optString("image_url", "")),
                             yearBuilt = obj.optString("year_built"),
                             status = obj.optString("status"),
                             architect = obj.optString("architect"),
@@ -239,7 +316,10 @@ class SavedPhotosFragment : Fragment() {
                             nearby3Category = obj.optString("nearby3_category"),
                             rating = obj.optInt("rating", 0),
                             createdAt = obj.optString("created_at", ""),
-                            language = obj.optString("language", "en")
+                            language = obj.optString("language", "en"),
+                            isFavorited = obj.optInt("is_favorited", 0),
+                            landmarkLat = obj.optDouble("landmark_lat", 0.0),
+                            landmarkLng = obj.optDouble("landmark_lng", 0.0)
                         )
                     )
                 }
@@ -249,6 +329,34 @@ class SavedPhotosFragment : Fragment() {
                     allItems.addAll(items)
                     buildCountryChips()
                     applyFilter()
+                    // Register geofences for all landmarks that have coordinates
+                    val ctx = context ?: return@withContext
+                    GeofenceManager.register(ctx, items.map {
+                        GeofenceManager.GeofenceLandmark(
+                            id = it.serverId,
+                            name = it.name,
+                            lat = it.landmarkLat,
+                            lng = it.landmarkLng,
+                            location = it.location,
+                            imageUrl = it.imageUrl,
+                            yearBuilt = it.yearBuilt,
+                            status = it.status,
+                            architect = it.architect,
+                            capacity = it.capacity,
+                            narrativeP1 = it.narrativeP1,
+                            narrativeQuote = it.narrativeQuote,
+                            narrativeP2 = it.narrativeP2,
+                            nearby1Name = it.nearby1Name,
+                            nearby1Category = it.nearby1Category,
+                            nearby2Name = it.nearby2Name,
+                            nearby2Category = it.nearby2Category,
+                            nearby3Name = it.nearby3Name,
+                            nearby3Category = it.nearby3Category,
+                            rating = it.rating,
+                            language = it.language,
+                            isFavorited = it.isFavorited
+                        )
+                    })
                 }
             } catch (e: Exception) {
                 Log.e("SavedPhotos", "Failed to load from server, falling back to local", e)
@@ -257,6 +365,12 @@ class SavedPhotosFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun buildImageUrl(raw: String): String = when {
+        raw.startsWith("http") -> raw
+        raw.isNotEmpty() -> "${SessionManager.BASE_URL}$raw"
+        else -> ""
     }
 
     private fun loadFromLocalStorage() {

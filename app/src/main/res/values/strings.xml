@@ -100,6 +100,9 @@
     <string name="tap_to_rate">Tap to rate this place</string>
     <string name="retake_photo">Retake Photo</string>
     <string name="save_to_journal">Save to Journal</string>
+    <string name="scan_again">Scan Again</string>
+    <string name="saving">Saving…</string>
+    <string name="saved">Saved!</string>
     <string name="add_to_trip">Add to Trip</string>
 
     <!-- Saved Photos Page -->
@@ -141,6 +144,10 @@
     <string name="profile_sign_in">Sign In / Create Account</string>
     <string name="guest_sign_in_title">Sign in to track your journey</string>
     <string name="guest_sign_in_desc">Create a free account to save your discoveries across devices and unlock more features.</string>
+
+    <!-- Map Search -->
+    <string name="map_search_hint">Search city or country…</string>
+    <string name="map_search_not_found">Location not found</string>
 
     <!-- Map -->
     <string name="map_explore_ai">Explore with AI</string>
@@ -188,4 +195,52 @@
     <!-- Onboarding Animation -->
     <string name="scanning">Scanning</string>
     <string name="eiffel_tower_paris">Eiffel Tower, Paris</string>
+
+    <!-- AR Mode -->
+    <string name="ar_mode_title">AR Live Scan</string>
+    <string name="ar_mode_subtitle">Point at any landmark for instant info</string>
+    <string name="ar_scanning">Scanning…</string>
+    <string name="ar_landmark_detected">Landmark detected!</string>
+    <string name="ar_point_at_landmark">Point at a landmark</string>
+    <string name="ar_hold_still">Hold still, analyzing…</string>
+    <string name="ar_view_full_details">View Full Details →</string>
+    <string name="ar_no_landmark">No landmark detected</string>
+
+    <!-- PDF Export -->
+    <string name="export_pdf">📄 Export PDF</string>
+    <string name="export_generating">Generating journal…</string>
+    <string name="export_no_items">No saved landmarks to export</string>
+    <string name="export_failed">Failed to generate PDF</string>
+    <string name="export_share_title">Share Travel Journal</string>
+
+    <!-- Heatmap -->
+    <string name="heatmap_off">🔥 Heatmap</string>
+    <string name="heatmap_on">✕ Heatmap</string>
+
+    <!-- Travel Passport -->
+    <string name="passport_title">Travel Passport</string>
+    <string name="badge_unlocked">Badge unlocked!</string>
+
+    <!-- Liked Places (home page) -->
+    <string name="liked_places">Trending Spots</string>
+
+    <!-- Nearby Landmark Notification -->
+    <string name="notif_nearby_title">You\'re near %s</string>
+    <string name="notif_nearby_body">Tap to view your saved landmark</string>
+
+    <!-- Memory Notification -->
+    <string name="memory_title">One Year Ago Today</string>
+    <string name="memory_body">You scanned %1$s in %2$s</string>
+
+    <!-- Wrong Landmark Correction -->
+    <string name="wrong_landmark">Wrong landmark? Correct it</string>
+    <string name="correct_landmark_title">Correct Landmark</string>
+    <string name="correct_search_hint">Enter the correct landmark name…</string>
+    <string name="correct_search_btn">Search</string>
+    <string name="correct_searching">Searching…</string>
+    <string name="correct_not_found">Landmark not found. Try a more specific name.</string>
+    <string name="correct_confirm_btn">Yes, this is correct</string>
+    <string name="correct_saving">Updating…</string>
+    <string name="correct_success">Landmark corrected!</string>
+    <string name="correct_error">Update failed. Try again.</string>
 </resources>

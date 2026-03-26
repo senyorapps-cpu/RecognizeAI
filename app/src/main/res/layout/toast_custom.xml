@@ -20,7 +20,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/plus_jakarta_sans_semibold"
         android:text="Link copied to clipboard!"
         android:textColor="@color/deep_blue"
         android:textSize="14sp" />

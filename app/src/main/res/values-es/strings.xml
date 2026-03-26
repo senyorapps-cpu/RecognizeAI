@@ -159,4 +159,15 @@
     <!-- Onboarding Animation -->
     <string name="scanning">Escaneando</string>
     <string name="eiffel_tower_paris">Torre Eiffel, París</string>
+    <string name="notif_nearby_title">Estás cerca de %s</string>
+    <string name="notif_nearby_body">Toca para ver tu lugar guardado</string>
+    <!-- AR Mode -->
+    <string name="ar_mode_title">Escaneo AR en Vivo</string>
+    <string name="ar_mode_subtitle">Apunta a un lugar de interés</string>
+    <string name="ar_scanning">Escaneando…</string>
+    <string name="ar_landmark_detected">¡Lugar detectado!</string>
+    <string name="ar_point_at_landmark">Apunta a un lugar</string>
+    <string name="ar_hold_still">Quieto, analizando…</string>
+    <string name="ar_view_full_details">Ver Detalles →</string>
+    <string name="ar_no_landmark">No se detectó ningún lugar</string>
 </resources>

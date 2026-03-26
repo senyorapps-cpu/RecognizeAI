@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:fontFamily="@font/plus_jakarta_sans_bold"
+        android:text="Choose Theme"
+        android:textColor="@color/deep_blue"
+        android:textSize="18sp" />
+
+    <!-- Default -->
+    <LinearLayout
+        android:id="@+id/cardThemeDefault"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_setting_item"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="#FF1C5B9E"
+            android:layout_marginEnd="14dp">
+            <View android:layout_width="20dp" android:layout_height="40dp"
+                android:layout_gravity="end" android:background="#FFF0F7FF" />
+        </FrameLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans_semibold"
+                android:text="Default" android:textColor="@color/deep_blue" android:textSize="15sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans"
+                android:text="Clean blue &amp; white" android:textColor="@color/deep_blue_50" android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageView android:id="@+id/checkDefault" android:layout_width="20dp" android:layout_height="20dp"
+            android:src="@drawable/ic_check" android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Night Explorer -->
+    <LinearLayout
+        android:id="@+id/cardThemeNight"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_setting_item"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="#FF000000"
+            android:layout_marginEnd="14dp">
+            <View android:layout_width="40dp" android:layout_height="20dp"
+                android:layout_gravity="bottom" android:background="#66DFC623" />
+        </FrameLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans_semibold"
+                android:text="Night Explorer" android:textColor="@color/deep_blue" android:textSize="15sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans"
+                android:text="Gold on black" android:textColor="@color/deep_blue_50" android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageView android:id="@+id/checkNight" android:layout_width="20dp" android:layout_height="20dp"
+            android:src="@drawable/ic_check" android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Paper -->
+    <LinearLayout
+        android:id="@+id/cardThemePaper"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_setting_item"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="#FFFDFCF8"
+            android:layout_marginEnd="14dp">
+            <View android:layout_width="40dp" android:layout_height="2dp"
+                android:layout_gravity="center_vertical" android:background="#FF999080" />
+            <View android:layout_width="24dp" android:layout_height="2dp"
+                android:layout_gravity="center_vertical|start"
+                android:layout_marginTop="8dp" android:background="#FFCCC5B8" />
+        </FrameLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans_semibold"
+                android:text="Paper" android:textColor="@color/deep_blue" android:textSize="15sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="@font/plus_jakarta_sans"
+                android:text="Minimal warm white" android:textColor="@color/deep_blue_50" android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageView android:id="@+id/checkPaper" android:layout_width="20dp" android:layout_height="20dp"
+            android:src="@drawable/ic_check" android:visibility="gone" />
+    </LinearLayout>
+
+</LinearLayout>
