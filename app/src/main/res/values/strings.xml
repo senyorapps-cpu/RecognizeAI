@@ -243,4 +243,39 @@
     <string name="correct_saving">Updating…</string>
     <string name="correct_success">Landmark corrected!</string>
     <string name="correct_error">Update failed. Try again.</string>
+
+    <!-- Subscription Page -->
+    <string name="sub_title">Choose Your Plan</string>
+    <string name="sub_subtitle">Unlock the full power of SightAI</string>
+    <string name="sub_current_plan">Your current plan</string>
+    <string name="sub_per_month">/ month</string>
+    <string name="sub_popular">POPULAR</string>
+    <string name="sub_free_name">Explorer</string>
+    <string name="sub_free_price">Free</string>
+    <string name="sub_free_features">✓  3 AI scans per day\n✓  5 lifetime scans total\n✓  5 journal entries max\n✓  Audio narration\n✓  Google Maps navigation\n✗  Share card\n✗  Heatmap\n✗  PDF Export\n✗  AR Live Scan</string>
+    <string name="sub_plus_name">Traveler</string>
+    <string name="sub_plus_features">✓  50 AI scans per day\n✓  Unlimited journal\n✓  Audio narration\n✓  Share card generation\n✓  Full nearby places\n✓  Offline queue (20 photos)\n✓  Multi-language AI output</string>
+    <string name="sub_upgrade_traveler">Upgrade to Traveler</string>
+    <string name="sub_pro_name">Globetrotter</string>
+    <string name="sub_pro_features">✓  Everything in Traveler\n✓  200 AI scans per day\n✓  AR Live Scan\n✓  Unlimited offline queue\n✓  Early access to new features</string>
+    <string name="sub_upgrade_globetrotter">Upgrade to Globetrotter</string>
+    <string name="sub_footer">Payments processed securely via Google Play.\nCancel anytime from your Play Store subscriptions.</string>
+
+    <!-- Scan Limit Dialog -->
+    <string name="dialog_daily_limit_title">Daily Limit Reached</string>
+    <string name="dialog_daily_limit_message">You\'ve used all %1$d daily scans on the %2$s plan.</string>
+    <string name="dialog_lifetime_limit_message">You\'ve used all 5 free scans. Upgrade to keep discovering landmarks!</string>
+    <string name="dialog_queue_limit_message">Offline queue is full (%1$d photos max on the %2$s plan).</string>
+    <string name="dialog_not_landmark_title">Not a Landmark</string>
+    <string name="dialog_not_landmark_message">This doesn\'t appear to be a landmark or place of interest.\n\nPlease try again with a photo of a real-world building, monument, or historical site.</string>
+    <string name="dialog_upgrade_plan">Upgrade Plan</string>
+    <string name="dialog_maybe_later">Maybe Later</string>
+
+    <!-- Analyzing Steps -->
+    <string name="analyzing_step_1">Scanning image structure…</string>
+    <string name="analyzing_step_2">Matching visual patterns…</string>
+    <string name="analyzing_step_3">Identifying historical data…</string>
+    <string name="analyzing_step_4">Compiling discovery report…</string>
+    <string name="analyzing_waiting">Waiting for server response…</string>
+    <string name="analyzing_complete">Analysis complete</string>
 </resources>

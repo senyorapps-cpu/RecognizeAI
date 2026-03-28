@@ -19,7 +19,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-class OnboardingActivity : AppCompatActivity() {
+class OnboardingActivity : BaseActivity() {
 
     private lateinit var binding: ActivityOnboardingBinding
     private lateinit var adapter: OnboardingAdapter
@@ -44,6 +44,13 @@ class OnboardingActivity : AppCompatActivity() {
         // Skip onboarding + login if already logged in
         if (session.isLoggedIn) {
             startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
+        // Skip onboarding if user has already seen it
+        if (session.hasSeenOnboarding) {
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
         }
@@ -93,6 +100,7 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     fun navigateToLogin() {
+        SessionManager(this).hasSeenOnboarding = true
         startActivity(Intent(this, LoginActivity::class.java))
         finish()
     }

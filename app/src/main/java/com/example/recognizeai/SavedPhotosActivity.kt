@@ -22,7 +22,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-class SavedPhotosActivity : AppCompatActivity() {
+class SavedPhotosActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySavedPhotosBinding
     private val savedItems = mutableListOf<SavedLandmark>()

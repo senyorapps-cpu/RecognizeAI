@@ -6,9 +6,12 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".SightAIApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -53,9 +56,18 @@
         <activity android:name=".SubscriptionActivity" />
         <activity android:name=".TermsOfServiceActivity" />
 
+        <activity
+            android:name=".ARCameraActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.SightAI.Camera" />
+
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDW_5xgz6Bf83iPIkxUoNZZtgQ0MgO6GYw" />
+
+        <receiver
+            android:name=".GeofenceBroadcastReceiver"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

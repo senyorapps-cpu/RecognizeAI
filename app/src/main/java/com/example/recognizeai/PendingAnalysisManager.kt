@@ -240,7 +240,7 @@ class PendingAnalysisManager(private val context: Context) {
         inputStream.close()
         if (original == null) return null
 
-        val maxEdge = 800
+        val maxEdge = 1200
         val scale = if (original.width > original.height) {
             maxEdge.toFloat() / original.width
         } else {
@@ -262,7 +262,7 @@ class PendingAnalysisManager(private val context: Context) {
         dir.mkdirs()
         val file = File(dir, "compressed_${System.currentTimeMillis()}.jpg")
         FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 65, out)
         }
         if (bitmap !== original) bitmap.recycle()
         original.recycle()

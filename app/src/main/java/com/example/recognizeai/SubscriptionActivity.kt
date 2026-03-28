@@ -1,5 +1,6 @@
 package com.example.recognizeai
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -18,7 +19,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
+class SubscriptionActivity : BaseActivity(), PurchasesUpdatedListener {
 
     private lateinit var binding: ActivitySubscriptionBinding
     private lateinit var session: SessionManager
@@ -36,6 +37,11 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
     companion object {
         const val PRODUCT_TRAVELER = "plan_traveler_monthly"
         const val PRODUCT_GLOBETROTTER = "plan_globetrotter_monthly"
+        const val EXTRA_RETURN_TO = "return_to"
+        const val RETURN_AR = "ar"
+        const val RETURN_SHARE = "share"
+        const val RETURN_HEATMAP = "heatmap"
+        const val RETURN_PDF = "pdf"
         private const val TAG = "SubscriptionActivity"
     }
 
@@ -52,6 +58,9 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     private fun updateCurrentPlanIndicators() {
+        binding.tvFreeCurrent.visibility = View.GONE
+        binding.tvPlusCurrent.visibility = View.GONE
+        binding.tvProCurrent.visibility = View.GONE
         when (session.plan) {
             "plus" -> binding.tvPlusCurrent.visibility = View.VISIBLE
             "pro"  -> binding.tvProCurrent.visibility = View.VISIBLE
@@ -148,7 +157,10 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     notifyServerNoActivePurchases()
                 } else {
                     for (purchase in activePurchases) {
-                        handlePurchase(purchase)
+                        // Only process unacknowledged purchases to avoid duplicate receipts
+                        if (!purchase.isAcknowledged) {
+                            handlePurchase(purchase, silent = true)
+                        }
                     }
                 }
             }
@@ -212,7 +224,7 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
             BillingClient.BillingResponseCode.OK -> {
                 purchases?.forEach { purchase ->
                     if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                        handlePurchase(purchase)
+                        handlePurchase(purchase, silent = false)
                     }
                 }
             }
@@ -228,7 +240,7 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     // ── Verify Purchase on Server ──────────────────────────────────
 
-    private fun handlePurchase(purchase: Purchase) {
+    private fun handlePurchase(purchase: Purchase, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val productId = purchase.products.firstOrNull() ?: return@launch
@@ -265,25 +277,48 @@ class SubscriptionActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
                     withContext(Dispatchers.Main) {
                         updateCurrentPlanIndicators()
-                        Toast.makeText(
-                            this@SubscriptionActivity,
-                            "Upgrade successful! Welcome to ${session.planDisplayName}.",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        if (!silent) showSuccessDialog()
                     }
                 } else {
                     Log.e(TAG, "Server verification failed: $responseBody")
-                    if (!isSilentCheck) withContext(Dispatchers.Main) {
+                    if (!silent) withContext(Dispatchers.Main) {
                         Toast.makeText(this@SubscriptionActivity, "Verification failed. Contact support.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Purchase verification error", e)
-                if (!isSilentCheck) withContext(Dispatchers.Main) {
+                if (!silent) withContext(Dispatchers.Main) {
                     Toast.makeText(this@SubscriptionActivity, "Network error. Please try again.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+    }
+
+    private fun showSuccessDialog() {
+        val returnTo = intent.getStringExtra(EXTRA_RETURN_TO)
+        val view = layoutInflater.inflate(R.layout.dialog_subscription_success, null)
+        val dialog = android.app.Dialog(this)
+        dialog.setContentView(view)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.85).toInt(),
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(false)
+        view.findViewById<android.widget.TextView>(R.id.btnContinue).setOnClickListener {
+            dialog.dismiss()
+            when (returnTo) {
+                RETURN_AR -> {
+                    startActivity(android.content.Intent(this@SubscriptionActivity, ARCameraActivity::class.java))
+                    finish()
+                }
+                else -> {
+                    setResult(RESULT_OK)
+                    finish()
+                }
+            }
+        }
+        dialog.show()
     }
 
     override fun onDestroy() {

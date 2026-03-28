@@ -12,6 +12,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.example.recognizeai.databinding.FragmentHomeBinding
@@ -319,8 +321,11 @@ class HomeFragment : Fragment() {
 
                     binding.likedPlacesRow.removeAllViews()
                     val dp = resources.displayMetrics.density
-                    val cardW = (144 * dp).toInt()
-                    val cardH = (240 * dp).toInt()
+                    val insets = ViewCompat.getRootWindowInsets(binding.root)
+                    val sysBarBottom = insets?.getInsets(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
+                    val screenH = resources.displayMetrics.heightPixels - sysBarBottom
+                    val cardH = (screenH * 0.25).toInt()
+                    val cardW = (cardH * 0.6).toInt()
                     val marginEnd = (12 * dp).toInt()
 
                     for (i in 0 until arr.length()) {
@@ -449,7 +454,7 @@ class HomeFragment : Fragment() {
             if (SessionManager(requireContext()).isPro) {
                 startActivity(Intent(requireContext(), ARCameraActivity::class.java))
             } else {
-                startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
+                startActivity(Intent(requireContext(), SubscriptionActivity::class.java).putExtra(SubscriptionActivity.EXTRA_RETURN_TO, SubscriptionActivity.RETURN_AR))
             }
         }
     }

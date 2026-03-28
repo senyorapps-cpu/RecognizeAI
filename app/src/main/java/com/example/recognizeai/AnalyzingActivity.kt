@@ -5,6 +5,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -52,7 +53,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
-class AnalyzingActivity : AppCompatActivity() {
+class AnalyzingActivity : BaseActivity() {
 
     private lateinit var binding: ActivityAnalyzingBinding
     private val handler = Handler(Looper.getMainLooper())
@@ -200,10 +201,10 @@ class AnalyzingActivity : AppCompatActivity() {
             binding.tvPercent.text = "$value%"
 
             when {
-                value < 25 -> binding.tvStatusSubtitle.text = "Scanning image structure\u2026"
-                value < 50 -> binding.tvStatusSubtitle.text = "Matching visual patterns\u2026"
-                value < 75 -> binding.tvStatusSubtitle.text = "Identifying historical data\u2026"
-                else -> binding.tvStatusSubtitle.text = "Compiling discovery report\u2026"
+                value < 25 -> binding.tvStatusSubtitle.text = getString(R.string.analyzing_step_1)
+                value < 50 -> binding.tvStatusSubtitle.text = getString(R.string.analyzing_step_2)
+                value < 75 -> binding.tvStatusSubtitle.text = getString(R.string.analyzing_step_3)
+                else -> binding.tvStatusSubtitle.text = getString(R.string.analyzing_step_4)
             }
         }
         animator.addListener(object : android.animation.AnimatorListenerAdapter() {
@@ -214,7 +215,7 @@ class AnalyzingActivity : AppCompatActivity() {
                 } else {
                     // Hold at 90% — show pulsing "waiting" state
                     animationsFinished = true
-                    binding.tvStatusSubtitle.text = "Waiting for server response\u2026"
+                    binding.tvStatusSubtitle.text = getString(R.string.analyzing_waiting)
                     waitingAnimator = ObjectAnimator.ofFloat(binding.tvStatusSubtitle, View.ALPHA, 1f, 0.3f).apply {
                         duration = 800
                         repeatCount = ValueAnimator.INFINITE
@@ -239,7 +240,7 @@ class AnalyzingActivity : AppCompatActivity() {
 
         if (apiResult != null) {
             binding.tvPercent.text = "100%"
-            binding.tvStatusSubtitle.text = "Analysis complete"
+            binding.tvStatusSubtitle.text = getString(R.string.analyzing_complete)
             startActivity(apiResult!!)
             finish()
         } else {
@@ -357,7 +358,7 @@ class AnalyzingActivity : AppCompatActivity() {
             original
         }
 
-        val maxEdge = 800
+        val maxEdge = 1200
         val scale = if (rotated.width > rotated.height) {
             maxEdge.toFloat() / rotated.width
         } else {
@@ -379,7 +380,7 @@ class AnalyzingActivity : AppCompatActivity() {
         dir.mkdirs()
         val file = File(dir, "compressed_${System.currentTimeMillis()}.jpg")
         FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 65, out)
         }
         if (bitmap !== rotated) bitmap.recycle()
         rotated.recycle()
@@ -457,6 +458,12 @@ class AnalyzingActivity : AppCompatActivity() {
                                 "scan_limit_reached" -> {
                                     withContext(Dispatchers.Main) {
                                         showScanLimitDialog(SessionManager(this@AnalyzingActivity))
+                                    }
+                                    return@withTimeoutOrNull null
+                                }
+                                "lifetime_limit_reached" -> {
+                                    withContext(Dispatchers.Main) {
+                                        showLifetimeLimitDialog()
                                     }
                                     return@withTimeoutOrNull null
                                 }
@@ -655,7 +662,36 @@ class AnalyzingActivity : AppCompatActivity() {
         dialog.setCancelable(false)
 
         dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
-            "You've used all ${session.scanLimit} daily scans on the ${session.planDisplayName} plan."
+            getString(R.string.dialog_daily_limit_message, session.scanLimit, session.planDisplayName)
+
+        dialog.findViewById<TextView>(R.id.btnUpgrade).setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+            finish()
+        }
+        dialog.findViewById<TextView>(R.id.btnDismiss).setOnClickListener {
+            dialog.dismiss()
+            finish()
+        }
+        dialog.show()
+    }
+
+    private fun showLifetimeLimitDialog() {
+        percentAnimator?.cancel()
+        waitingAnimator?.cancel()
+        hasNavigated = true
+
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_scan_limit)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(false)
+
+        dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
+            getString(R.string.dialog_lifetime_limit_message)
 
         dialog.findViewById<TextView>(R.id.btnUpgrade).setOnClickListener {
             dialog.dismiss()
@@ -680,7 +716,7 @@ class AnalyzingActivity : AppCompatActivity() {
         dialog.setCancelable(false)
 
         dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
-            "Offline queue is full (${session.maxPendingQueue} photos max on the ${session.planDisplayName} plan)."
+            getString(R.string.dialog_queue_limit_message, session.maxPendingQueue, session.planDisplayName)
 
         dialog.findViewById<TextView>(R.id.btnUpgrade).setOnClickListener {
             dialog.dismiss()
@@ -705,9 +741,8 @@ class AnalyzingActivity : AppCompatActivity() {
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         dialog.setCancelable(false)
 
-        dialog.findViewById<TextView>(R.id.tvScanLimitTitle).text = "Not a Landmark"
-        dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text =
-            "This doesn't appear to be a landmark or place of interest.\n\nPlease try again with a photo of a real-world building, monument, or historical site."
+        dialog.findViewById<TextView>(R.id.tvScanLimitTitle).text = getString(R.string.dialog_not_landmark_title)
+        dialog.findViewById<TextView>(R.id.tvScanLimitMessage).text = getString(R.string.dialog_not_landmark_message)
 
         dialog.findViewById<TextView>(R.id.btnUpgrade).visibility = View.GONE
         dialog.findViewById<TextView>(R.id.btnDismiss).setOnClickListener {

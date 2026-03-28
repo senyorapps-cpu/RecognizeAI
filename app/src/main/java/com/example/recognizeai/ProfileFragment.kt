@@ -337,7 +337,6 @@ class ProfileFragment : Fragment() {
                 session.language = lang.code
                 LocaleHelper.setLocale(lang.code)
                 saveLanguageToServer(lang.code)
-                requireActivity().recreate()
             }
             sheet.show(parentFragmentManager, LanguageBottomSheet.TAG)
         }

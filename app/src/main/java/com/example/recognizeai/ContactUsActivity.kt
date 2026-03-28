@@ -25,7 +25,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-class ContactUsActivity : AppCompatActivity() {
+class ContactUsActivity : BaseActivity() {
 
     private var selectedTopic: String? = null
     private var attachedUri: Uri? = null

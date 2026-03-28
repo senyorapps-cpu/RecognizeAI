@@ -170,4 +170,39 @@
     <string name="ar_hold_still">Fique quieto, analisando…</string>
     <string name="ar_view_full_details">Ver Detalhes →</string>
     <string name="ar_no_landmark">Nenhum ponto detectado</string>
+
+    <!-- Subscription Page -->
+    <string name="sub_title">Escolha seu plano</string>
+    <string name="sub_subtitle">Desbloqueie todo o poder do SightAI</string>
+    <string name="sub_current_plan">Seu plano atual</string>
+    <string name="sub_per_month">/ mês</string>
+    <string name="sub_popular">POPULAR</string>
+    <string name="sub_free_name">Explorador</string>
+    <string name="sub_free_price">Grátis</string>
+    <string name="sub_free_features">✓  3 scans de IA por dia\n✓  5 scans no total\n✓  Máx. 5 entradas no diário\n✓  Narração em áudio\n✓  Navegação no Google Maps\n✗  Cartão para compartilhar\n✗  Mapa de calor\n✗  Exportar PDF\n✗  Scan AR ao vivo</string>
+    <string name="sub_plus_name">Viajante</string>
+    <string name="sub_plus_features">✓  50 scans de IA por dia\n✓  Diário ilimitado\n✓  Narração em áudio\n✓  Geração de cartão para compartilhar\n✓  Todos os lugares próximos\n✓  Fila offline (20 fotos)\n✓  Saída de IA multilíngue</string>
+    <string name="sub_upgrade_traveler">Atualizar para Viajante</string>
+    <string name="sub_pro_name">Globetrotter</string>
+    <string name="sub_pro_features">✓  Tudo do Viajante\n✓  200 scans de IA por dia\n✓  Scan AR ao vivo\n✓  Fila offline ilimitada\n✓  Acesso antecipado a novos recursos</string>
+    <string name="sub_upgrade_globetrotter">Atualizar para Globetrotter</string>
+    <string name="sub_footer">Pagamentos processados com segurança pelo Google Play.\nCancele a qualquer momento nas suas assinaturas da Play Store.</string>
+
+    <!-- Scan Limit Dialog -->
+    <string name="dialog_daily_limit_title">Limite diário atingido</string>
+    <string name="dialog_daily_limit_message">Você usou todos os %1$d scans diários no plano %2$s.</string>
+    <string name="dialog_lifetime_limit_message">Você usou todos os 5 scans gratuitos. Atualize para continuar descobrindo!</string>
+    <string name="dialog_queue_limit_message">A fila offline está cheia (máx. %1$d fotos no plano %2$s).</string>
+    <string name="dialog_not_landmark_title">Não é um ponto turístico</string>
+    <string name="dialog_not_landmark_message">Isso não parece ser um ponto turístico ou local de interesse.\n\nPor favor, tente novamente com uma foto de um edifício, monumento ou local histórico real.</string>
+    <string name="dialog_upgrade_plan">Atualizar plano</string>
+    <string name="dialog_maybe_later">Talvez mais tarde</string>
+
+    <!-- Analyzing Steps -->
+    <string name="analyzing_step_1">Escaneando estrutura da imagem…</string>
+    <string name="analyzing_step_2">Combinando padrões visuais…</string>
+    <string name="analyzing_step_3">Identificando dados históricos…</string>
+    <string name="analyzing_step_4">Compilando relatório de descoberta…</string>
+    <string name="analyzing_waiting">Aguardando resposta do servidor…</string>
+    <string name="analyzing_complete">Análise concluída</string>
 </resources>

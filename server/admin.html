@@ -227,6 +227,7 @@ th,td{padding:6px 4px}
     <a href="#" data-tab="database"><span class="icon">&#9735;</span><span>Database</span></a>
     <a href="#" data-tab="plans"><span class="icon">&#9673;</span><span>Plans</span></a>
     <a href="#" data-tab="subscriptions"><span class="icon">&#9654;</span><span>Subscriptions</span></a>
+    <a href="#" data-tab="apicosts"><span class="icon">&#36;</span><span>API Costs</span></a>
   </nav>
   <div class="sidebar-footer">
     <button onclick="doLogout()">Logout</button>
@@ -375,6 +376,25 @@ th,td{padding:6px 4px}
     <div class="monitor-grid" id="databaseInfo"></div>
   </div>
 
+  <!-- API COSTS TAB -->
+  <div class="tab-content" id="tab-apicosts">
+    <div class="main-header">
+      <h1>Gemini API Costs</h1>
+      <button onclick="loadApiCosts()" style="background:#25aff4;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:14px;">&#8635; Refresh</button>
+    </div>
+    <div class="stats-grid" id="apiCostSummary"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+      <div class="table-card" id="apiCostByType">
+        <h3>This Month by Call Type</h3>
+        <p style="color:#aaa;font-size:13px">Loading...</p>
+      </div>
+      <div class="table-card">
+        <h3>Daily Cost — Last 30 Days</h3>
+        <canvas id="apiCostChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+
   <!-- SUBSCRIPTIONS TAB -->
   <div class="tab-content" id="tab-subscriptions">
     <div class="main-header">
@@ -491,6 +511,7 @@ function loadTab(tab) {
     case "database": loadDatabase(); break;
     case "plans": loadPlans(); break;
     case "subscriptions": loadSubscriptions(); break;
+    case "apicosts": loadApiCosts(); break;
   }
 }
 
@@ -862,10 +883,11 @@ async function loadPlans() {
     const plans = await apiFetch('/api/admin/plan-limits');
     const labels = { free: 'Explorer (Free)', plus: 'Traveler ($3.99/mo)', pro: 'Globetrotter ($7.99/mo)' };
     const fields = [
-      { key: 'scans_per_day', label: 'Scans / day', hint: '' },
-      { key: 'max_journal',   label: 'Max journal entries', hint: '-1 = unlimited' },
-      { key: 'max_queue',     label: 'Max offline queue',   hint: '-1 = unlimited' },
-      { key: 'max_pins',      label: 'Max map pins',        hint: '-1 = unlimited' },
+      { key: 'scans_per_day',    label: 'Scans / day',              hint: '' },
+      { key: 'lifetime_scan_cap',label: 'Lifetime scan cap',        hint: '-1 = unlimited' },
+      { key: 'max_journal',      label: 'Max journal entries',      hint: '-1 = unlimited' },
+      { key: 'max_queue',        label: 'Max offline queue',        hint: '-1 = unlimited' },
+      { key: 'max_pins',         label: 'Max map pins',             hint: '-1 = unlimited' },
     ];
     const boolFields = [
       { key: 'audio_enabled', label: 'Audio narration' },
@@ -876,7 +898,7 @@ async function loadPlans() {
         <h3 style="margin-bottom:16px">${labels[p.plan] || p.plan}</h3>
         ${fields.map(f => `
           <div class="monitor-item" style="margin-bottom:10px">
-            <span class="label">${f.label}${f.hint ? ' <small style=color:#888>(\'+f.hint+\')</small>' : ''}</span>
+            <span class="label">${f.label}${f.hint ? ` <small style="color:#888">(${f.hint})</small>` : ''}</span>
             <input id="${p.plan}_${f.key}" type="number" value="${p[f.key]}"
               style="width:90px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px">
           </div>
@@ -900,12 +922,13 @@ async function loadPlans() {
 async function savePlan(plan) {
   const get = id => document.getElementById(id);
   const body = {
-    scans_per_day: parseInt(get(`${plan}_scans_per_day`).value),
-    max_journal:   parseInt(get(`${plan}_max_journal`).value),
-    max_queue:     parseInt(get(`${plan}_max_queue`).value),
-    max_pins:      parseInt(get(`${plan}_max_pins`).value),
-    audio_enabled: get(`${plan}_audio_enabled`).checked,
-    share_enabled: get(`${plan}_share_enabled`).checked,
+    scans_per_day:     parseInt(get(`${plan}_scans_per_day`).value),
+    lifetime_scan_cap: parseInt(get(`${plan}_lifetime_scan_cap`).value),
+    max_journal:       parseInt(get(`${plan}_max_journal`).value),
+    max_queue:         parseInt(get(`${plan}_max_queue`).value),
+    max_pins:          parseInt(get(`${plan}_max_pins`).value),
+    audio_enabled:     get(`${plan}_audio_enabled`).checked,
+    share_enabled:     get(`${plan}_share_enabled`).checked,
   };
   try {
     await apiFetch(`/api/admin/plan-limits/${plan}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -984,6 +1007,64 @@ async function loadSubscriptions() {
     `;
   } catch(e) {
     document.getElementById('subSummary').innerHTML = `<p style="color:#e74c3c">Failed to load: ${e.message}</p>`;
+  }
+}
+
+// ── API Costs ──────────────────────────────────────────────────
+async function loadApiCosts() {
+  try {
+    const d = await apiFetch("/api/admin/gemini-stats");
+    const fmt$ = (v) => "$" + (v || 0).toFixed(4);
+    const fmtK = (v) => v >= 1000 ? (v/1000).toFixed(1)+"K" : String(v);
+
+    document.getElementById("apiCostSummary").innerHTML = `
+      <div class="stat-card gold"><div class="label">Today — Calls</div><div class="value">${fmtK(d.today.calls)}</div><div class="sub">${fmt$(d.today.cost)}</div></div>
+      <div class="stat-card gold"><div class="label">This Month — Calls</div><div class="value">${fmtK(d.month.calls)}</div><div class="sub">${fmt$(d.month.cost)}</div></div>
+      <div class="stat-card gold"><div class="label">All Time — Calls</div><div class="value">${fmtK(d.alltime.calls)}</div><div class="sub">${fmt$(d.alltime.cost)}</div></div>
+      <div class="stat-card"><div class="label">Today — Tokens</div><div class="value">${fmtK(d.today.tokens_total)}</div><div class="sub">in:${fmtK(d.today.tokens_input)} out:${fmtK(d.today.tokens_output)}</div></div>
+      <div class="stat-card"><div class="label">Month — Tokens</div><div class="value">${fmtK(d.month.tokens_total)}</div><div class="sub">in:${fmtK(d.month.tokens_input)} out:${fmtK(d.month.tokens_output)}</div></div>
+    `;
+
+    const typeLabels = { scan: "Camera Scan", ar: "AR Live Scan", info: "Landmark Info", search: "Search" };
+    const rows = d.by_type.map(r => `
+      <tr>
+        <td>${typeLabels[r.call_type] || r.call_type}</td>
+        <td>${fmtK(r.calls)}</td>
+        <td>${fmtK(r.tokens_total)}</td>
+        <td style="color:#D4A843;font-weight:600">${fmt$(r.cost)}</td>
+      </tr>`).join("");
+    document.getElementById("apiCostByType").innerHTML = `
+      <h3>This Month by Call Type</h3>
+      ${rows ? `<table><thead><tr><th>Type</th><th>Calls</th><th>Tokens</th><th>Cost</th></tr></thead><tbody>${rows}</tbody></table>`
+             : "<p style='color:#aaa;font-size:13px'>No calls recorded yet.</p>"}
+    `;
+
+    if (charts.apiCost) { charts.apiCost.destroy(); delete charts.apiCost; }
+    const ctx = document.getElementById("apiCostChart").getContext("2d");
+    charts.apiCost = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: d.daily_30.map(r => r.day),
+        datasets: [{
+          label: "Cost ($)",
+          data: d.daily_30.map(r => parseFloat(r.cost.toFixed(5))),
+          backgroundColor: "rgba(212,168,67,0.6)",
+          borderColor: "#D4A843",
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => "$"+v.toFixed(4) } },
+          x: { ticks: { maxTicksLimit: 10 } }
+        }
+      }
+    });
+  } catch(e) {
+    document.getElementById("apiCostSummary").innerHTML = `<p style="color:#e74c3c">Failed to load: ${e.message}</p>`;
   }
 }
 

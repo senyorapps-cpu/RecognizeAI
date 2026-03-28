@@ -28,6 +28,7 @@ class SessionManager(context: Context) {
         private const val KEY_PLAN = "plan"
         private const val KEY_SCANS_TODAY = "scans_today"
         private const val KEY_SCAN_DATE = "scan_date"
+        private const val KEY_ONBOARDING_SEEN = "onboarding_seen"
 
         // Plan limit keys (fetched from server, stored locally)
         private const val KEY_LIMIT_FREE_SCANS    = "limit_free_scans"
@@ -62,6 +63,10 @@ class SessionManager(context: Context) {
     }
 
     val isLoggedIn: Boolean get() = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+
+    var hasSeenOnboarding: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_SEEN, false)
+        set(value) { prefs.edit().putBoolean(KEY_ONBOARDING_SEEN, value).apply() }
     val userId: Long get() = prefs.getLong(KEY_USER_ID, -1L)
     val authType: String get() = prefs.getString(KEY_AUTH_TYPE, "") ?: ""
     val displayName: String get() = prefs.getString(KEY_DISPLAY_NAME, "Guest") ?: "Guest"

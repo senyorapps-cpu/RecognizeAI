@@ -170,4 +170,39 @@
     <string name="ar_hold_still">Quieto, analizando…</string>
     <string name="ar_view_full_details">Ver Detalles →</string>
     <string name="ar_no_landmark">No se detectó ningún lugar</string>
+
+    <!-- Subscription Page -->
+    <string name="sub_title">Elige tu plan</string>
+    <string name="sub_subtitle">Desbloquea todo el poder de SightAI</string>
+    <string name="sub_current_plan">Tu plan actual</string>
+    <string name="sub_per_month">/ mes</string>
+    <string name="sub_popular">POPULAR</string>
+    <string name="sub_free_name">Explorador</string>
+    <string name="sub_free_price">Gratis</string>
+    <string name="sub_free_features">✓  3 escaneos AI por día\n✓  5 escaneos de por vida\n✓  Máx. 5 entradas en el diario\n✓  Narración de audio\n✓  Navegación en Google Maps\n✗  Tarjeta para compartir\n✗  Mapa de calor\n✗  Exportar PDF\n✗  Escaneo AR en vivo</string>
+    <string name="sub_plus_name">Viajero</string>
+    <string name="sub_plus_features">✓  50 escaneos AI por día\n✓  Diario ilimitado\n✓  Narración de audio\n✓  Generación de tarjeta para compartir\n✓  Todos los lugares cercanos\n✓  Cola sin conexión (20 fotos)\n✓  Salida AI multilingüe</string>
+    <string name="sub_upgrade_traveler">Actualizar a Viajero</string>
+    <string name="sub_pro_name">Trotamundos</string>
+    <string name="sub_pro_features">✓  Todo de Viajero\n✓  200 escaneos AI por día\n✓  Escaneo AR en vivo\n✓  Cola sin conexión ilimitada\n✓  Acceso anticipado a nuevas funciones</string>
+    <string name="sub_upgrade_globetrotter">Actualizar a Trotamundos</string>
+    <string name="sub_footer">Pagos procesados de forma segura a través de Google Play.\nCancela en cualquier momento desde tus suscripciones de Play Store.</string>
+
+    <!-- Scan Limit Dialog -->
+    <string name="dialog_daily_limit_title">Límite diario alcanzado</string>
+    <string name="dialog_daily_limit_message">Has usado todos tus %1$d escaneos diarios en el plan %2$s.</string>
+    <string name="dialog_lifetime_limit_message">Has usado tus 5 escaneos gratuitos. ¡Mejora tu plan para seguir descubriendo!</string>
+    <string name="dialog_queue_limit_message">La cola sin conexión está llena (máx. %1$d fotos en el plan %2$s).</string>
+    <string name="dialog_not_landmark_title">No es un monumento</string>
+    <string name="dialog_not_landmark_message">Esto no parece ser un monumento o lugar de interés.\n\nPor favor intenta de nuevo con una foto de un edificio, monumento o sitio histórico real.</string>
+    <string name="dialog_upgrade_plan">Mejorar plan</string>
+    <string name="dialog_maybe_later">Quizás más tarde</string>
+
+    <!-- Analyzing Steps -->
+    <string name="analyzing_step_1">Escaneando estructura de imagen…</string>
+    <string name="analyzing_step_2">Comparando patrones visuales…</string>
+    <string name="analyzing_step_3">Identificando datos históricos…</string>
+    <string name="analyzing_step_4">Compilando informe de descubrimiento…</string>
+    <string name="analyzing_waiting">Esperando respuesta del servidor…</string>
+    <string name="analyzing_complete">Análisis completo</string>
 </resources>

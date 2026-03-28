@@ -6,7 +6,7 @@ import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import com.example.recognizeai.databinding.ActivityPrivacyPolicyBinding
 
-class PrivacyPolicyActivity : AppCompatActivity() {
+class PrivacyPolicyActivity : BaseActivity() {
 
     private lateinit var binding: ActivityPrivacyPolicyBinding
 

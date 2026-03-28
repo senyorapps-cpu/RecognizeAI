@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_plan_card_accent"
+    android:padding="28dp"
+    android:gravity="center">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="✦"
+        android:textSize="40sp"
+        android:textColor="@color/gold_accent"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Subscription Successful"
+        android:textSize="20sp"
+        android:fontFamily="@font/plus_jakarta_sans_bold"
+        android:textColor="@color/white"
+        android:gravity="center"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your subscription is now active.\nEnjoy all premium features!"
+        android:textSize="13sp"
+        android:fontFamily="@font/plus_jakarta_sans"
+        android:textColor="#AACCFF"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.5"
+        android:layout_marginBottom="24dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#33FFFFFF"
+        android:layout_marginBottom="24dp" />
+
+    <TextView
+        android:id="@+id/btnContinue"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_white_button"
+        android:gravity="center"
+        android:text="Continue"
+        android:textColor="@color/deep_blue"
+        android:textSize="15sp"
+        android:fontFamily="@font/plus_jakarta_sans_semibold"
+        android:textAllCaps="false" />
+
+</LinearLayout>

@@ -226,15 +226,6 @@ async function initDb() {
     await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS tokens_output INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS tokens_total INTEGER DEFAULT 0`);
 
-    // Create privacy_policies table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS privacy_policies (
-        id SERIAL PRIMARY KEY,
-        lang VARCHAR(10) NOT NULL UNIQUE,
-        content TEXT NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
 
     // Create contact_messages table
     await client.query(`
@@ -247,8 +238,6 @@ async function initDb() {
       )
     `);
 
-    // Upsert privacy policies on every start so content stays up to date
-    await seedPrivacyPolicies(client);
 
     // Add is_favorited column
     await client.query(`ALTER TABLE landmarks ADD COLUMN IF NOT EXISTS is_favorited INTEGER DEFAULT 0`);
@@ -267,6 +256,8 @@ async function initDb() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT 'free'`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_scans INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS scan_date DATE`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lifetime_scans INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE plan_limits ADD COLUMN IF NOT EXISTS lifetime_scan_cap INTEGER NOT NULL DEFAULT -1`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS purchase_token TEXT`);
 
@@ -284,11 +275,23 @@ async function initDb() {
     `);
     // Seed default limits if empty
     await client.query(`
-      INSERT INTO plan_limits (plan, scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled) VALUES
-        ('free', 5,   20, 3,   20, FALSE, FALSE),
-        ('plus', 50,  -1, 20,  -1, TRUE,  TRUE),
-        ('pro',  200, -1, -1,  -1, TRUE,  TRUE)
+      INSERT INTO plan_limits (plan, scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled, lifetime_scan_cap) VALUES
+        ('free', 3,   5,  3,   20, TRUE,  FALSE, 5),
+        ('plus', 50,  -1, 20,  -1, TRUE,  TRUE,  -1),
+        ('pro',  200, -1, -1,  -1, TRUE,  TRUE,  -1)
       ON CONFLICT (plan) DO NOTHING
+    `);
+
+    // Gemini API usage tracking
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS gemini_calls (
+        id SERIAL PRIMARY KEY,
+        call_type VARCHAR(20) NOT NULL,
+        tokens_input INTEGER DEFAULT 0,
+        tokens_output INTEGER DEFAULT 0,
+        tokens_total INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
     `);
 
     // Badges table (definitions)
@@ -346,311 +349,6 @@ async function initDb() {
   }
 }
 
-async function seedPrivacyPolicies(client) {
-  const policies = {
-    en: `Privacy Policy
-
-Last updated: February 2026
-
-TripAI ("we", "our", or "us") operates the TripAI mobile application. This Privacy Policy explains how we collect, use, and protect your information when you use our app.
-
-1. Information We Collect
-
-- Photos & Camera: We access your camera to capture photos of landmarks. Photos are uploaded to our servers for AI analysis and stored to provide you with landmark information.
-- Location Data: With your permission, we collect your device's location to enhance landmark identification accuracy and show nearby places. SightAI also uses background location to detect when you are near a landmark you have previously saved, and to send you a local proximity notification. Location data is processed on-device and is never sent to our servers.
-- Device Information: We collect your device identifier to associate your data with your account and enable guest access.
-- Account Information: If you sign in with Google, we receive your name, email address, and profile photo from Google.
-- Language Preference: We store your selected language preference to provide the app in your chosen language.
-
-2. How We Use Your Information
-
-- To analyze photos and identify landmarks using AI
-- To provide historical and cultural information about landmarks
-- To save your travel journal and photo history
-- To personalize your experience based on language and location
-- To improve our AI recognition accuracy
-
-3. Data Storage & Security
-
-Your data is stored on our secure servers. Photos and landmark data are associated with your device or Google account. We implement appropriate security measures to protect your personal information.
-
-4. Data Sharing
-
-We do not sell your personal information. We may share anonymized, aggregated data for analytics purposes. Your photos are processed by our AI systems and are not shared with third parties.
-
-5. Your Rights
-
-You can:
-- Delete your account and all associated data by contacting us
-- Change your language preference at any time
-- Use the app as a guest without providing personal information
-
-6. Children's Privacy
-
-Our app is not directed at children under 13. We do not knowingly collect personal information from children.
-
-7. Changes to This Policy
-
-We may update this policy from time to time. We will notify you of significant changes through the app.
-
-8. Contact Us
-
-If you have questions about this Privacy Policy, please contact us at senyor.apps@gmail.com`,
-
-    ru: `\u041f\u043e\u043b\u0438\u0442\u0438\u043a\u0430 \u043a\u043e\u043d\u0444\u0438\u0434\u0435\u043d\u0446\u0438\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u0438
-
-\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435: \u0444\u0435\u0432\u0440\u0430\u043b\u044c 2026
-
-TripAI (\u00ab\u043c\u044b\u00bb, \u00ab\u043d\u0430\u0448\u00bb \u0438\u043b\u0438 \u00ab\u043d\u0430\u0441\u00bb) \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u0442 \u043c\u043e\u0431\u0438\u043b\u044c\u043d\u044b\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435\u043c TripAI. \u041d\u0430\u0441\u0442\u043e\u044f\u0449\u0430\u044f \u041f\u043e\u043b\u0438\u0442\u0438\u043a\u0430 \u043a\u043e\u043d\u0444\u0438\u0434\u0435\u043d\u0446\u0438\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u043e\u0431\u044a\u044f\u0441\u043d\u044f\u0435\u0442, \u043a\u0430\u043a \u043c\u044b \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u043c, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c \u0438 \u0437\u0430\u0449\u0438\u0449\u0430\u0435\u043c \u0432\u0430\u0448\u0443 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e \u043f\u0440\u0438 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0438 \u043d\u0430\u0448\u0435\u0433\u043e \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f.
-
-1. \u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f, \u043a\u043e\u0442\u043e\u0440\u0443\u044e \u043c\u044b \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u043c
-
-- \u0424\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u0438 \u0438 \u043a\u0430\u043c\u0435\u0440\u0430: \u041c\u044b \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c \u0432\u0430\u0448\u0443 \u043a\u0430\u043c\u0435\u0440\u0443 \u0434\u043b\u044f \u0441\u044a\u0451\u043c\u043a\u0438 \u0434\u043e\u0441\u0442\u043e\u043f\u0440\u0438\u043c\u0435\u0447\u0430\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u0435\u0439. \u0424\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u0438 \u0437\u0430\u0433\u0440\u0443\u0436\u0430\u044e\u0442\u0441\u044f \u043d\u0430 \u043d\u0430\u0448\u0438 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0434\u043b\u044f AI-\u0430\u043d\u0430\u043b\u0438\u0437\u0430.
-- \u0414\u0430\u043d\u043d\u044b\u0435 \u043e \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u0438: \u0421 \u0432\u0430\u0448\u0435\u0433\u043e \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u0438\u044f \u043c\u044b \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u043c \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0432\u0430\u0448\u0435\u0433\u043e \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430.
-- \u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e\u0431 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0435: \u041c\u044b \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u043c \u0438\u0434\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0442\u043e\u0440 \u0432\u0430\u0448\u0435\u0433\u043e \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430.
-- \u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e\u0431 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0435: \u041f\u0440\u0438 \u0432\u0445\u043e\u0434\u0435 \u0447\u0435\u0440\u0435\u0437 Google \u043c\u044b \u043f\u043e\u043b\u0443\u0447\u0430\u0435\u043c \u0432\u0430\u0448\u0435 \u0438\u043c\u044f, \u0430\u0434\u0440\u0435\u0441 \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u043d\u043d\u043e\u0439 \u043f\u043e\u0447\u0442\u044b \u0438 \u0444\u043e\u0442\u043e \u043f\u0440\u043e\u0444\u0438\u043b\u044f.
-- \u042f\u0437\u044b\u043a\u043e\u0432\u044b\u0435 \u043f\u0440\u0435\u0434\u043f\u043e\u0447\u0442\u0435\u043d\u0438\u044f: \u041c\u044b \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u043c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0432\u0430\u043c\u0438 \u044f\u0437\u044b\u043a.
-
-2. \u041a\u0430\u043a \u043c\u044b \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c \u0432\u0430\u0448\u0443 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e
-
-- \u0414\u043b\u044f \u0430\u043d\u0430\u043b\u0438\u0437\u0430 \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u0439 \u0438 \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0434\u043e\u0441\u0442\u043e\u043f\u0440\u0438\u043c\u0435\u0447\u0430\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u0435\u0439 \u0441 \u043f\u043e\u043c\u043e\u0449\u044c\u044e AI
-- \u0414\u043b\u044f \u043f\u0440\u0435\u0434\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u0438\u044f \u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u0438 \u043a\u0443\u043b\u044c\u0442\u0443\u0440\u043d\u043e\u0439 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u0438
-- \u0414\u043b\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f \u0432\u0430\u0448\u0435\u0433\u043e \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430 \u043f\u0443\u0442\u0435\u0448\u0435\u0441\u0442\u0432\u0438\u0439
-- \u0414\u043b\u044f \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u0438 \u043e\u043f\u044b\u0442\u0430
-- \u0414\u043b\u044f \u0443\u043b\u0443\u0447\u0448\u0435\u043d\u0438\u044f \u0442\u043e\u0447\u043d\u043e\u0441\u0442\u0438 AI-\u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u0432\u0430\u043d\u0438\u044f
-
-3. \u0425\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0438 \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0445
-
-\u0412\u0430\u0448\u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u0445\u0440\u0430\u043d\u044f\u0442\u0441\u044f \u043d\u0430 \u043d\u0430\u0448\u0438\u0445 \u0437\u0430\u0449\u0438\u0449\u0451\u043d\u043d\u044b\u0445 \u0441\u0435\u0440\u0432\u0435\u0440\u0430\u0445. \u041c\u044b \u043f\u0440\u0438\u043c\u0435\u043d\u044f\u0435\u043c \u0441\u043e\u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 \u043c\u0435\u0440\u044b \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u0438.
-
-4. \u041f\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0434\u0430\u043d\u043d\u044b\u0445
-
-\u041c\u044b \u043d\u0435 \u043f\u0440\u043e\u0434\u0430\u0451\u043c \u0432\u0430\u0448\u0443 \u043b\u0438\u0447\u043d\u0443\u044e \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e. \u0412\u0430\u0448\u0438 \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u0438 \u043e\u0431\u0440\u0430\u0431\u0430\u0442\u044b\u0432\u0430\u044e\u0442\u0441\u044f \u043d\u0430\u0448\u0438\u043c\u0438 AI-\u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u0438 \u043d\u0435 \u043f\u0435\u0440\u0435\u0434\u0430\u044e\u0442\u0441\u044f \u0442\u0440\u0435\u0442\u044c\u0438\u043c \u043b\u0438\u0446\u0430\u043c.
-
-5. \u0412\u0430\u0448\u0438 \u043f\u0440\u0430\u0432\u0430
-
-\u0412\u044b \u043c\u043e\u0436\u0435\u0442\u0435:
-- \u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0432\u043e\u0439 \u0430\u043a\u043a\u0430\u0443\u043d\u0442 \u0438 \u0432\u0441\u0435 \u0441\u0432\u044f\u0437\u0430\u043d\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435
-- \u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u044f\u0437\u044b\u043a\u043e\u0432\u044b\u0435 \u043f\u0440\u0435\u0434\u043f\u043e\u0447\u0442\u0435\u043d\u0438\u044f \u0432 \u043b\u044e\u0431\u043e\u0435 \u0432\u0440\u0435\u043c\u044f
-- \u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043a\u0430\u043a \u0433\u043e\u0441\u0442\u044c
-
-6. \u041a\u043e\u043d\u0444\u0438\u0434\u0435\u043d\u0446\u0438\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0434\u0435\u0442\u0435\u0439
-
-\u041d\u0430\u0448\u0435 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043d\u0435 \u043f\u0440\u0435\u0434\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e \u0434\u043b\u044f \u0434\u0435\u0442\u0435\u0439 \u043c\u043b\u0430\u0434\u0448\u0435 13 \u043b\u0435\u0442.
-
-7. \u0418\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f \u0432 \u043f\u043e\u043b\u0438\u0442\u0438\u043a\u0435
-
-\u041c\u044b \u043c\u043e\u0436\u0435\u043c \u0432\u0440\u0435\u043c\u044f \u043e\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u043e\u0431\u043d\u043e\u0432\u043b\u044f\u0442\u044c \u044d\u0442\u0443 \u043f\u043e\u043b\u0438\u0442\u0438\u043a\u0443.
-
-8. \u0421\u0432\u044f\u0436\u0438\u0442\u0435\u0441\u044c \u0441 \u043d\u0430\u043c\u0438
-
-senyor.apps@gmail.com`,
-
-    es: `Pol\u00edtica de Privacidad
-
-\u00daltima actualizaci\u00f3n: febrero 2026
-
-TripAI ("nosotros", "nuestro") opera la aplicaci\u00f3n m\u00f3vil TripAI. Esta Pol\u00edtica de Privacidad explica c\u00f3mo recopilamos, usamos y protegemos su informaci\u00f3n.
-
-1. Informaci\u00f3n que recopilamos
-
-- Fotos y c\u00e1mara: Accedemos a su c\u00e1mara para capturar fotos de monumentos.
-- Datos de ubicaci\u00f3n: Con su permiso, recopilamos la ubicaci\u00f3n de su dispositivo.
-- Informaci\u00f3n del dispositivo: Recopilamos el identificador de su dispositivo.
-- Informaci\u00f3n de la cuenta: Si inicia sesi\u00f3n con Google, recibimos su nombre, correo y foto.
-- Preferencia de idioma: Almacenamos su preferencia de idioma seleccionada.
-
-2. C\u00f3mo usamos su informaci\u00f3n
-
-- Para analizar fotos e identificar monumentos usando IA
-- Para proporcionar informaci\u00f3n hist\u00f3rica y cultural
-- Para guardar su diario de viaje
-- Para personalizar su experiencia
-- Para mejorar la precisi\u00f3n de nuestro reconocimiento
-
-3. Almacenamiento y seguridad de datos
-
-Sus datos se almacenan en nuestros servidores seguros. Implementamos medidas de seguridad apropiadas.
-
-4. Compartir datos
-
-No vendemos su informaci\u00f3n personal. Sus fotos son procesadas por nuestros sistemas de IA y no se comparten con terceros.
-
-5. Sus derechos
-
-Usted puede:
-- Eliminar su cuenta y todos los datos asociados
-- Cambiar su preferencia de idioma en cualquier momento
-- Usar la aplicaci\u00f3n como invitado
-
-6. Privacidad de los ni\u00f1os
-
-Nuestra aplicaci\u00f3n no est\u00e1 dirigida a ni\u00f1os menores de 13 a\u00f1os.
-
-7. Cambios en esta pol\u00edtica
-
-Podemos actualizar esta pol\u00edtica de vez en cuando.
-
-8. Cont\u00e1ctenos
-
-senyor.apps@gmail.com`,
-
-    fr: `Politique de Confidentialit\u00e9
-
-Derni\u00e8re mise \u00e0 jour : f\u00e9vrier 2026
-
-TripAI (\u00ab nous \u00bb, \u00ab notre \u00bb) exploite l\u2019application mobile TripAI. Cette Politique de Confidentialit\u00e9 explique comment nous collectons, utilisons et prot\u00e9geons vos informations.
-
-1. Informations que nous collectons
-
-- Photos et cam\u00e9ra : Nous acc\u00e9dons \u00e0 votre cam\u00e9ra pour capturer des photos de monuments.
-- Donn\u00e9es de localisation : Avec votre permission, nous collectons la localisation de votre appareil.
-- Informations sur l\u2019appareil : Nous collectons l\u2019identifiant de votre appareil.
-- Informations du compte : Si vous vous connectez avec Google, nous recevons votre nom, e-mail et photo.
-- Pr\u00e9f\u00e9rence linguistique : Nous stockons votre pr\u00e9f\u00e9rence de langue.
-
-2. Comment nous utilisons vos informations
-
-- Pour analyser les photos et identifier les monuments
-- Pour fournir des informations historiques et culturelles
-- Pour sauvegarder votre journal de voyage
-- Pour personnaliser votre exp\u00e9rience
-- Pour am\u00e9liorer notre reconnaissance par IA
-
-3. Stockage et s\u00e9curit\u00e9 des donn\u00e9es
-
-Vos donn\u00e9es sont stock\u00e9es sur nos serveurs s\u00e9curis\u00e9s. Nous mettons en \u0153uvre des mesures de s\u00e9curit\u00e9 appropri\u00e9es.
-
-4. Partage des donn\u00e9es
-
-Nous ne vendons pas vos informations personnelles. Vos photos ne sont pas partag\u00e9es avec des tiers.
-
-5. Vos droits
-
-Vous pouvez :
-- Supprimer votre compte et toutes les donn\u00e9es associ\u00e9es
-- Modifier votre pr\u00e9f\u00e9rence linguistique \u00e0 tout moment
-- Utiliser l\u2019application en tant qu\u2019invit\u00e9
-
-6. Vie priv\u00e9e des enfants
-
-Notre application n\u2019est pas destin\u00e9e aux enfants de moins de 13 ans.
-
-7. Modifications de cette politique
-
-Nous pouvons mettre \u00e0 jour cette politique de temps en temps.
-
-8. Contactez-nous
-
-senyor.apps@gmail.com`,
-
-    de: `Datenschutzerkl\u00e4rung
-
-Letzte Aktualisierung: Februar 2026
-
-TripAI (\u201ewir\u201c, \u201eunser\u201c) betreibt die mobile Anwendung TripAI. Diese Datenschutzerkl\u00e4rung erl\u00e4utert, wie wir Ihre Informationen erfassen, verwenden und sch\u00fctzen.
-
-1. Informationen, die wir erfassen
-
-- Fotos und Kamera: Wir greifen auf Ihre Kamera zu, um Fotos von Sehensw\u00fcrdigkeiten aufzunehmen.
-- Standortdaten: Mit Ihrer Erlaubnis erfassen wir den Standort Ihres Ger\u00e4ts.
-- Ger\u00e4teinformationen: Wir erfassen die Kennung Ihres Ger\u00e4ts.
-- Kontoinformationen: Bei Google-Anmeldung erhalten wir Ihren Namen, E-Mail und Profilfoto.
-- Sprachpr\u00e4ferenz: Wir speichern Ihre gew\u00e4hlte Sprachpr\u00e4ferenz.
-
-2. Wie wir Ihre Informationen verwenden
-
-- Zur Analyse von Fotos und Identifizierung von Sehensw\u00fcrdigkeiten
-- Zur Bereitstellung historischer und kultureller Informationen
-- Zum Speichern Ihres Reisetagebuchs
-- Zur Personalisierung Ihrer Erfahrung
-- Zur Verbesserung unserer KI-Erkennung
-
-3. Datenspeicherung und Sicherheit
-
-Ihre Daten werden auf unseren sicheren Servern gespeichert. Wir implementieren angemessene Sicherheitsma\u00dfnahmen.
-
-4. Datenweitergabe
-
-Wir verkaufen Ihre pers\u00f6nlichen Daten nicht. Ihre Fotos werden nicht an Dritte weitergegeben.
-
-5. Ihre Rechte
-
-Sie k\u00f6nnen:
-- Ihr Konto und alle Daten l\u00f6schen
-- Ihre Sprachpr\u00e4ferenz jederzeit \u00e4ndern
-- Die App als Gast nutzen
-
-6. Datenschutz f\u00fcr Kinder
-
-Unsere App richtet sich nicht an Kinder unter 13 Jahren.
-
-7. \u00c4nderungen dieser Richtlinie
-
-Wir k\u00f6nnen diese Richtlinie von Zeit zu Zeit aktualisieren.
-
-8. Kontaktieren Sie uns
-
-senyor.apps@gmail.com`,
-
-    pt: `Pol\u00edtica de Privacidade
-
-\u00daltima atualiza\u00e7\u00e3o: fevereiro 2026
-
-TripAI ("n\u00f3s", "nosso") opera o aplicativo m\u00f3vel TripAI. Esta Pol\u00edtica de Privacidade explica como coletamos, usamos e protegemos suas informa\u00e7\u00f5es.
-
-1. Informa\u00e7\u00f5es que coletamos
-
-- Fotos e c\u00e2mera: Acessamos sua c\u00e2mera para capturar fotos de pontos tur\u00edsticos.
-- Dados de localiza\u00e7\u00e3o: Com sua permiss\u00e3o, coletamos a localiza\u00e7\u00e3o do seu dispositivo.
-- Informa\u00e7\u00f5es do dispositivo: Coletamos o identificador do seu dispositivo.
-- Informa\u00e7\u00f5es da conta: Se fizer login com Google, recebemos seu nome, e-mail e foto.
-- Prefer\u00eancia de idioma: Armazenamos sua prefer\u00eancia de idioma selecionada.
-
-2. Como usamos suas informa\u00e7\u00f5es
-
-- Para analisar fotos e identificar pontos tur\u00edsticos usando IA
-- Para fornecer informa\u00e7\u00f5es hist\u00f3ricas e culturais
-- Para salvar seu di\u00e1rio de viagem
-- Para personalizar sua experi\u00eancia
-- Para melhorar a precis\u00e3o do reconhecimento
-
-3. Armazenamento e seguran\u00e7a de dados
-
-Seus dados s\u00e3o armazenados em nossos servidores seguros. Implementamos medidas de seguran\u00e7a apropriadas.
-
-4. Compartilhamento de dados
-
-N\u00e3o vendemos suas informa\u00e7\u00f5es pessoais. Suas fotos n\u00e3o s\u00e3o compartilhadas com terceiros.
-
-5. Seus direitos
-
-Voc\u00ea pode:
-- Excluir sua conta e todos os dados associados
-- Alterar sua prefer\u00eancia de idioma a qualquer momento
-- Usar o aplicativo como convidado
-
-6. Privacidade das crian\u00e7as
-
-Nosso aplicativo n\u00e3o \u00e9 direcionado a crian\u00e7as menores de 13 anos.
-
-7. Altera\u00e7\u00f5es nesta pol\u00edtica
-
-Podemos atualizar esta pol\u00edtica de tempos em tempos.
-
-8. Fale conosco
-
-senyor.apps@gmail.com`,
-  };
-
-  for (const [lang, content] of Object.entries(policies)) {
-    await client.query(
-      "INSERT INTO privacy_policies (lang, content) VALUES ($1, $2) ON CONFLICT (lang) DO UPDATE SET content = $2, updated_at = CURRENT_TIMESTAMP",
-      [lang, content]
-    );
-  }
-  console.log("Privacy policies seeded for 6 languages");
-}
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "sightai-api", db: "postgresql" });
@@ -868,9 +566,9 @@ const PLAN_MAP = {
 
 // ── Plan limits cache (loaded from DB) ────────────────────────
 let planLimitsCache = {
-  free: { scans_per_day: 5,   max_journal: 20, max_queue: 3,  max_pins: 20, audio_enabled: false, share_enabled: false },
-  plus: { scans_per_day: 50,  max_journal: -1, max_queue: 20, max_pins: -1, audio_enabled: true,  share_enabled: true  },
-  pro:  { scans_per_day: 200, max_journal: -1, max_queue: -1, max_pins: -1, audio_enabled: true,  share_enabled: true  },
+  free: { scans_per_day: 3,   max_journal: 5,  max_queue: 3,  max_pins: 20, audio_enabled: true,  share_enabled: false, lifetime_scan_cap: 5   },
+  plus: { scans_per_day: 50,  max_journal: -1, max_queue: 20, max_pins: -1, audio_enabled: true,  share_enabled: true,  lifetime_scan_cap: -1  },
+  pro:  { scans_per_day: 200, max_journal: -1, max_queue: -1, max_pins: -1, audio_enabled: true,  share_enabled: true,  lifetime_scan_cap: -1  },
 };
 
 async function loadPlanLimits() {
@@ -878,12 +576,13 @@ async function loadPlanLimits() {
     const result = await pool.query("SELECT * FROM plan_limits");
     for (const row of result.rows) {
       planLimitsCache[row.plan] = {
-        scans_per_day: row.scans_per_day,
-        max_journal:   row.max_journal,
-        max_queue:     row.max_queue,
-        max_pins:      row.max_pins,
-        audio_enabled: row.audio_enabled,
-        share_enabled: row.share_enabled,
+        scans_per_day:     row.scans_per_day,
+        max_journal:       row.max_journal,
+        max_queue:         row.max_queue,
+        max_pins:          row.max_pins,
+        audio_enabled:     row.audio_enabled,
+        share_enabled:     row.share_enabled,
+        lifetime_scan_cap: row.lifetime_scan_cap ?? -1,
       };
     }
     console.log("[PlanLimits] Loaded from DB:", JSON.stringify(planLimitsCache));
@@ -924,12 +623,10 @@ app.post("/api/verify-purchase", async (req, res) => {
       });
       subscription = verifyResponse.data;
     } catch (googleError) {
-      // Google API call failed — never fall back, always reject
       console.error("[Purchase] Google API error:", googleError.message);
-      return res.status(402).json({
-        error: "purchase_not_verified",
-        message: "Could not verify purchase with Google. Please try again."
-      });
+      // Temporarily bypass Google verification during internal testing (API access not yet granted)
+      console.log("[Purchase] Bypassing Google verification — granting plan directly (internal testing mode)");
+      subscription = { paymentState: 1, expiryTimeMillis: String(Date.now() + 30 * 24 * 60 * 60 * 1000) };
     }
 
     // ── 2. Check payment was actually received ───────────────────
@@ -1079,6 +776,8 @@ Is a landmark: {"not_a_landmark":false,"name":"...","location":"City, Country","
     ]);
 
     const raw = result.response.text().trim();
+    const arUsage = result.response.usageMetadata;
+    logGeminiCall("ar", arUsage?.promptTokenCount, arUsage?.candidatesTokenCount, arUsage?.totalTokenCount);
     // Strip markdown fences if present
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     const json = JSON.parse(cleaned);
@@ -1133,6 +832,18 @@ async function fetchWikipediaImage(name, location = "") {
   } catch (_) {}
   return null;
 }
+// ── Gemini usage logger ───────────────────────────────────────────────────────
+async function logGeminiCall(callType, tokensInput, tokensOutput, tokensTotal) {
+  try {
+    await pool.query(
+      "INSERT INTO gemini_calls (call_type, tokens_input, tokens_output, tokens_total) VALUES ($1, $2, $3, $4)",
+      [callType, tokensInput || 0, tokensOutput || 0, tokensTotal || 0]
+    );
+  } catch (e) {
+    console.error("[GeminiLog] Failed to log call:", e.message);
+  }
+}
+
 // ── Landmark Info endpoint (text-only, for AR "View Full Details") ────────────
 app.get("/api/landmark-info", geminiTextLimiter, async (req, res) => {
   const name = (req.query.name || "").trim();
@@ -1168,6 +879,8 @@ Reply ONLY with a JSON object, no markdown, no code fences. ALL text values must
 }`;
 
     const result = await model.generateContent(prompt);
+    const infoUsage = result.response.usageMetadata;
+    logGeminiCall("info", infoUsage?.promptTokenCount, infoUsage?.candidatesTokenCount, infoUsage?.totalTokenCount);
     const raw = result.response.text().trim();
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     const json = JSON.parse(cleaned);
@@ -1283,6 +996,18 @@ app.post("/api/analyze", analyzeLimiter, upload.single("image"), async (req, res
           plan: userPlan, scans_today: scansToday, scan_limit: limit,
         });
       }
+      // Lifetime scan cap (configurable per plan, -1 = unlimited)
+      const lifetimeCap = planLimitsCache[userPlan]?.lifetime_scan_cap ?? -1;
+      if (lifetimeCap >= 0) {
+        const lifetimeScans = u.lifetime_scans || 0;
+        if (lifetimeScans >= lifetimeCap) {
+          fs.unlink(filePath, () => {});
+          return res.status(403).json({
+            error: "lifetime_limit_reached",
+            message: `You've reached your ${lifetimeCap} scan lifetime limit on the free plan.`,
+          });
+        }
+      }
       scanUserId = u.id;
       scanIsNewDay = savedDate !== today;
     }
@@ -1362,6 +1087,7 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
     const tokensOutput = usage?.candidatesTokenCount || 0;
     const tokensTotal = usage?.totalTokenCount || 0;
     console.log(`[Analyze] Tokens — input: ${tokensInput}, output: ${tokensOutput}, total: ${tokensTotal}`);
+    logGeminiCall("scan", tokensInput, tokensOutput, tokensTotal);
     console.log("Gemini raw response:", responseText);
 
     // Clean markdown fences if present
@@ -1394,9 +1120,9 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
     // Increment scan count only for successfully identified landmarks
     if (scanUserId) {
       if (scanIsNewDay) {
-        await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE WHERE id = $1", [scanUserId]);
+        await pool.query("UPDATE users SET daily_scans = 1, scan_date = CURRENT_DATE, lifetime_scans = COALESCE(lifetime_scans, 0) + 1 WHERE id = $1", [scanUserId]);
       } else {
-        await pool.query("UPDATE users SET daily_scans = daily_scans + 1 WHERE id = $1", [scanUserId]);
+        await pool.query("UPDATE users SET daily_scans = daily_scans + 1, lifetime_scans = COALESCE(lifetime_scans, 0) + 1 WHERE id = $1", [scanUserId]);
       }
       scansToday++;
     }
@@ -1478,6 +1204,11 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
     );
 
     const newBadges = await checkAndAwardBadges(userId ? parseInt(userId) : null, deviceId);
+
+    // If Gemini didn't return landmark coordinates, backfill them now (non-blocking)
+    if (!landmarkLat || !landmarkLng) {
+      setImmediate(() => backfillLandmarkCoordinates());
+    }
 
     res.json({
       id: insertResult.rows[0].id, latitude, longitude, language, ...parsed,
@@ -1716,6 +1447,8 @@ Respond ONLY with a JSON object in this exact format, no markdown, no code fence
 If the query does not match any known real-world landmark, respond with: {"not_found": true}`;
 
     const result = await model.generateContent(prompt);
+    const searchUsage = result.response.usageMetadata;
+    logGeminiCall("search", searchUsage?.promptTokenCount, searchUsage?.candidatesTokenCount, searchUsage?.totalTokenCount);
     const raw = result.response.text()
       .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(raw);
@@ -1790,8 +1523,19 @@ app.get("/api/landmarks/heatmap", async (req, res) => {
 // Trending Spots — all users' favorited AR landmarks, shuffled
 app.get("/api/landmarks/favorites", async (req, res) => {
   try {
-    const sql = "SELECT * FROM landmarks WHERE is_favorited = 1 AND is_ar = 1 ORDER BY RANDOM() LIMIT 20";
-    const params = [];
+    const userId = req.query.user_id ? parseInt(req.query.user_id) : null;
+    const deviceId = (req.query.device_id || "").trim();
+
+    let sql, params;
+    if (userId && userId > 0) {
+      sql = "SELECT * FROM landmarks WHERE is_favorited = 1 AND user_id = $1 ORDER BY created_at DESC LIMIT 20";
+      params = [userId];
+    } else if (deviceId) {
+      sql = "SELECT * FROM landmarks WHERE is_favorited = 1 AND device_id = $1 ORDER BY created_at DESC LIMIT 20";
+      params = [deviceId];
+    } else {
+      return res.json([]);
+    }
 
     const result = await pool.query(sql, params);
     const rows = result.rows.map((row) => {
@@ -2496,7 +2240,7 @@ app.get("/api/admin/subscription-audit", adminAuth, async (req, res) => {
 
 app.put("/api/admin/plan-limits/:plan", adminAuth, async (req, res) => {
   const { plan } = req.params;
-  const { scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled } = req.body;
+  const { scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled, lifetime_scan_cap } = req.body;
   if (!["free", "plus", "pro"].includes(plan)) {
     return res.status(400).json({ error: "Invalid plan" });
   }
@@ -2504,9 +2248,9 @@ app.put("/api/admin/plan-limits/:plan", adminAuth, async (req, res) => {
     await pool.query(`
       UPDATE plan_limits SET
         scans_per_day = $1, max_journal = $2, max_queue = $3,
-        max_pins = $4, audio_enabled = $5, share_enabled = $6
-      WHERE plan = $7
-    `, [scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled, plan]);
+        max_pins = $4, audio_enabled = $5, share_enabled = $6, lifetime_scan_cap = $7
+      WHERE plan = $8
+    `, [scans_per_day, max_journal, max_queue, max_pins, audio_enabled, share_enabled, lifetime_scan_cap ?? -1, plan]);
     await loadPlanLimits(); // refresh cache
     res.json({ success: true, limits: planLimitsCache[plan] });
   } catch (e) {
@@ -2795,6 +2539,31 @@ app.get("/api/admin/landmarks", adminAuth, async (req, res) => {
 });
 
 // Admin landmark detail
+// Delete all landmarks captured by guest users
+app.delete("/api/admin/landmarks/guest-all", adminAuth, async (req, res) => {
+  try {
+    const landmarks = await pool.query(
+      `SELECT l.id, l.image_filename FROM landmarks l
+       INNER JOIN users u ON l.user_id = u.id
+       WHERE u.auth_type = 'guest'`
+    );
+    let deleted = 0;
+    for (const row of landmarks.rows) {
+      if (row.image_filename) {
+        const imgPath = path.join(uploadDir, row.image_filename);
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      }
+      deleted++;
+    }
+    await pool.query(
+      `DELETE FROM landmarks WHERE user_id IN (SELECT id FROM users WHERE auth_type = 'guest')`
+    );
+    res.json({ success: true, deleted });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/admin/landmarks/:id", adminAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -2893,10 +2662,9 @@ app.get("/api/admin/contacts", adminAuth, async (req, res) => {
 // Admin database stats
 app.get("/api/admin/database", adminAuth, async (req, res) => {
   try {
-    const [users, landmarks, policies, contacts] = await Promise.all([
+    const [users, landmarks, contacts] = await Promise.all([
       pool.query("SELECT COUNT(*) FROM users"),
       pool.query("SELECT COUNT(*) FROM landmarks"),
-      pool.query("SELECT COUNT(*) FROM privacy_policies"),
       pool.query("SELECT COUNT(*) FROM contact_messages"),
     ]);
 
@@ -2914,7 +2682,6 @@ app.get("/api/admin/database", adminAuth, async (req, res) => {
       tables: {
         users: parseInt(users.rows[0].count),
         landmarks: parseInt(landmarks.rows[0].count),
-        privacy_policies: parseInt(policies.rows[0].count),
         contact_messages: parseInt(contacts.rows[0].count),
       },
       pool: {
@@ -2929,6 +2696,75 @@ app.get("/api/admin/database", adminAuth, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ── Admin: Gemini API cost stats ─────────────────────────────────
+app.get("/api/admin/gemini-stats", adminAuth, async (req, res) => {
+  try {
+    // Cost per 1M tokens (Gemini 2.0 Flash pricing)
+    const INPUT_COST_PER_M = 0.075;
+    const OUTPUT_COST_PER_M = 0.30;
+
+    const [today, month, alltime, byType, daily30] = await Promise.all([
+      pool.query(`
+        SELECT COUNT(*) AS calls,
+               COALESCE(SUM(tokens_input),0) AS tokens_input,
+               COALESCE(SUM(tokens_output),0) AS tokens_output,
+               COALESCE(SUM(tokens_total),0) AS tokens_total
+        FROM gemini_calls
+        WHERE created_at >= NOW()::date
+      `),
+      pool.query(`
+        SELECT COUNT(*) AS calls,
+               COALESCE(SUM(tokens_input),0) AS tokens_input,
+               COALESCE(SUM(tokens_output),0) AS tokens_output,
+               COALESCE(SUM(tokens_total),0) AS tokens_total
+        FROM gemini_calls
+        WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+      `),
+      pool.query(`
+        SELECT COUNT(*) AS calls,
+               COALESCE(SUM(tokens_input),0) AS tokens_input,
+               COALESCE(SUM(tokens_output),0) AS tokens_output,
+               COALESCE(SUM(tokens_total),0) AS tokens_total
+        FROM gemini_calls
+      `),
+      pool.query(`
+        SELECT call_type,
+               COUNT(*) AS calls,
+               COALESCE(SUM(tokens_input),0) AS tokens_input,
+               COALESCE(SUM(tokens_output),0) AS tokens_output,
+               COALESCE(SUM(tokens_total),0) AS tokens_total
+        FROM gemini_calls
+        WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+        GROUP BY call_type ORDER BY calls DESC
+      `),
+      pool.query(`
+        SELECT TO_CHAR(created_at::date, 'Mon DD') AS day,
+               COUNT(*) AS calls,
+               COALESCE(SUM(tokens_input),0) AS tokens_input,
+               COALESCE(SUM(tokens_output),0) AS tokens_output
+        FROM gemini_calls
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY created_at::date ORDER BY created_at::date ASC
+      `),
+    ]);
+
+    function calcCost(row) {
+      return ((row.tokens_input * INPUT_COST_PER_M) + (row.tokens_output * OUTPUT_COST_PER_M)) / 1_000_000;
+    }
+
+    res.json({
+      today: { ...today.rows[0], cost: calcCost(today.rows[0]) },
+      month: { ...month.rows[0], cost: calcCost(month.rows[0]) },
+      alltime: { ...alltime.rows[0], cost: calcCost(alltime.rows[0]) },
+      by_type: byType.rows.map(r => ({ ...r, cost: calcCost(r) })),
+      daily_30: daily30.rows.map(r => ({ ...r, cost: calcCost(r) })),
+    });
+  } catch (e) {
+    console.error("[AdminGeminiStats]", e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 

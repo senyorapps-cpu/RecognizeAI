@@ -170,4 +170,39 @@
     <string name="ar_hold_still">Не двигайтесь, анализ…</string>
     <string name="ar_view_full_details">Подробнее →</string>
     <string name="ar_no_landmark">Объект не обнаружен</string>
+
+    <!-- Subscription Page -->
+    <string name="sub_title">Выберите тариф</string>
+    <string name="sub_subtitle">Откройте все возможности SightAI</string>
+    <string name="sub_current_plan">Ваш текущий тариф</string>
+    <string name="sub_per_month">/ месяц</string>
+    <string name="sub_popular">ПОПУЛЯРНЫЙ</string>
+    <string name="sub_free_name">Исследователь</string>
+    <string name="sub_free_price">Бесплатно</string>
+    <string name="sub_free_features">✓  3 AI-сканирования в день\n✓  5 сканирований за всё время\n✓  До 5 записей в журнале\n✓  Аудио-рассказ\n✓  Навигация на картах\n✗  Поделиться карточкой\n✗  Тепловая карта\n✗  Экспорт PDF\n✗  AR Живое сканирование</string>
+    <string name="sub_plus_name">Путешественник</string>
+    <string name="sub_plus_features">✓  50 AI-сканирований в день\n✓  Безлимитный журнал\n✓  Аудио-рассказ\n✓  Поделиться карточкой\n✓  Все ближайшие места\n✓  Офлайн-очередь (20 фото)\n✓  Мультиязычный AI</string>
+    <string name="sub_upgrade_traveler">Перейти на Путешественник</string>
+    <string name="sub_pro_name">Глобтроттер</string>
+    <string name="sub_pro_features">✓  Всё из тарифа Путешественник\n✓  200 AI-сканирований в день\n✓  AR Живое сканирование\n✓  Безлимитная офлайн-очередь\n✓  Ранний доступ к новым функциям</string>
+    <string name="sub_upgrade_globetrotter">Перейти на Глобтроттер</string>
+    <string name="sub_footer">Оплата безопасно через Google Play.\nОтмена в любое время в настройках подписок.</string>
+
+    <!-- Scan Limit Dialog -->
+    <string name="dialog_daily_limit_title">Дневной лимит исчерпан</string>
+    <string name="dialog_daily_limit_message">Вы использовали все %1$d ежедневных сканирований на плане %2$s.</string>
+    <string name="dialog_lifetime_limit_message">Вы использовали все 5 бесплатных сканирований. Улучшите план, чтобы продолжить!</string>
+    <string name="dialog_queue_limit_message">Офлайн-очередь заполнена (максимум %1$d фото на плане %2$s).</string>
+    <string name="dialog_not_landmark_title">Не достопримечательность</string>
+    <string name="dialog_not_landmark_message">Это не похоже на достопримечательность.\n\nПожалуйста, попробуйте снова с фото реального здания, памятника или исторического объекта.</string>
+    <string name="dialog_upgrade_plan">Улучшить план</string>
+    <string name="dialog_maybe_later">Позже</string>
+
+    <!-- Analyzing Steps -->
+    <string name="analyzing_step_1">Сканирование структуры изображения…</string>
+    <string name="analyzing_step_2">Сопоставление визуальных паттернов…</string>
+    <string name="analyzing_step_3">Поиск исторических данных…</string>
+    <string name="analyzing_step_4">Составление отчёта об открытии…</string>
+    <string name="analyzing_waiting">Ожидание ответа сервера…</string>
+    <string name="analyzing_complete">Анализ завершён</string>
 </resources>

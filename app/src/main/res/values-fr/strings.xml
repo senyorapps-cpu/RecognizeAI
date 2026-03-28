@@ -171,4 +171,39 @@
     <string name="ar_hold_still">Ne bougez pas, analyse…</string>
     <string name="ar_view_full_details">Voir les Détails →</string>
     <string name="ar_no_landmark">Aucun lieu détecté</string>
+
+    <!-- Subscription Page -->
+    <string name="sub_title">Choisissez votre forfait</string>
+    <string name="sub_subtitle">Débloquez toute la puissance de SightAI</string>
+    <string name="sub_current_plan">Votre forfait actuel</string>
+    <string name="sub_per_month">/ mois</string>
+    <string name="sub_popular">POPULAIRE</string>
+    <string name="sub_free_name">Explorateur</string>
+    <string name="sub_free_price">Gratuit</string>
+    <string name="sub_free_features">✓  3 scans AI par jour\n✓  5 scans à vie au total\n✓  5 entrées de journal max\n✓  Narration audio\n✓  Navigation Google Maps\n✗  Carte de partage\n✗  Carte de chaleur\n✗  Export PDF\n✗  Scan AR en direct</string>
+    <string name="sub_plus_name">Voyageur</string>
+    <string name="sub_plus_features">✓  50 scans AI par jour\n✓  Journal illimité\n✓  Narration audio\n✓  Génération de carte de partage\n✓  Lieux à proximité complets\n✓  File hors ligne (20 photos)\n✓  Sortie AI multilingue</string>
+    <string name="sub_upgrade_traveler">Passer à Voyageur</string>
+    <string name="sub_pro_name">Globe-Trotteur</string>
+    <string name="sub_pro_features">✓  Tout de Voyageur\n✓  200 scans AI par jour\n✓  Scan AR en direct\n✓  File hors ligne illimitée\n✓  Accès anticipé aux nouvelles fonctionnalités</string>
+    <string name="sub_upgrade_globetrotter">Passer à Globe-Trotteur</string>
+    <string name="sub_footer">Paiements traités en toute sécurité via Google Play.\nAnnulez à tout moment depuis vos abonnements Play Store.</string>
+
+    <!-- Scan Limit Dialog -->
+    <string name="dialog_daily_limit_title">Limite quotidienne atteinte</string>
+    <string name="dialog_daily_limit_message">Vous avez utilisé tous vos %1$d scans quotidiens sur le forfait %2$s.</string>
+    <string name="dialog_lifetime_limit_message">Vous avez utilisé vos 5 scans gratuits. Passez à un forfait supérieur pour continuer!</string>
+    <string name="dialog_queue_limit_message">La file hors ligne est pleine (%1$d photos max sur le forfait %2$s).</string>
+    <string name="dialog_not_landmark_title">Pas un monument</string>
+    <string name="dialog_not_landmark_message">Ceci ne semble pas être un monument ou un lieu d\'intérêt.\n\nVeuillez réessayer avec une photo d\'un bâtiment, monument ou site historique réel.</string>
+    <string name="dialog_upgrade_plan">Améliorer le forfait</string>
+    <string name="dialog_maybe_later">Peut-être plus tard</string>
+
+    <!-- Analyzing Steps -->
+    <string name="analyzing_step_1">Analyse de la structure de l\'image…</string>
+    <string name="analyzing_step_2">Correspondance des motifs visuels…</string>
+    <string name="analyzing_step_3">Identification des données historiques…</string>
+    <string name="analyzing_step_4">Compilation du rapport de découverte…</string>
+    <string name="analyzing_waiting">En attente de la réponse du serveur…</string>
+    <string name="analyzing_complete">Analyse terminée</string>
 </resources>

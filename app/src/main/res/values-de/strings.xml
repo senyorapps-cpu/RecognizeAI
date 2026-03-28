@@ -170,4 +170,39 @@
     <string name="ar_hold_still">Bitte stillhalten, analysiere…</string>
     <string name="ar_view_full_details">Details anzeigen →</string>
     <string name="ar_no_landmark">Keine Sehenswürdigkeit erkannt</string>
+
+    <!-- Subscription Page -->
+    <string name="sub_title">Tarif wählen</string>
+    <string name="sub_subtitle">Schalte die volle Kraft von SightAI frei</string>
+    <string name="sub_current_plan">Ihr aktueller Tarif</string>
+    <string name="sub_per_month">/ Monat</string>
+    <string name="sub_popular">BELIEBT</string>
+    <string name="sub_free_name">Entdecker</string>
+    <string name="sub_free_price">Kostenlos</string>
+    <string name="sub_free_features">✓  3 KI-Scans pro Tag\n✓  5 Scans insgesamt\n✓  Max. 5 Tagebucheinträge\n✓  Audioerzählung\n✓  Google Maps Navigation\n✗  Visitenkarte teilen\n✗  Heatmap\n✗  PDF-Export\n✗  AR-Live-Scan</string>
+    <string name="sub_plus_name">Reisender</string>
+    <string name="sub_plus_features">✓  50 KI-Scans pro Tag\n✓  Unbegrenztes Tagebuch\n✓  Audioerzählung\n✓  Visitenkarte teilen\n✓  Alle nahen Orte\n✓  Offline-Warteschlange (20 Fotos)\n✓  Mehrsprachige KI-Ausgabe</string>
+    <string name="sub_upgrade_traveler">Auf Reisender upgraden</string>
+    <string name="sub_pro_name">Weltenbummler</string>
+    <string name="sub_pro_features">✓  Alles aus Reisender\n✓  200 KI-Scans pro Tag\n✓  AR-Live-Scan\n✓  Unbegrenzte Offline-Warteschlange\n✓  Früher Zugang zu neuen Funktionen</string>
+    <string name="sub_upgrade_globetrotter">Auf Weltenbummler upgraden</string>
+    <string name="sub_footer">Zahlungen sicher über Google Play verarbeitet.\nJederzeit in Ihren Play Store-Abonnements kündigen.</string>
+
+    <!-- Scan Limit Dialog -->
+    <string name="dialog_daily_limit_title">Tageslimit erreicht</string>
+    <string name="dialog_daily_limit_message">Sie haben alle %1$d täglichen Scans im %2$s-Tarif verwendet.</string>
+    <string name="dialog_lifetime_limit_message">Sie haben alle 5 kostenlosen Scans verwendet. Upgraden Sie, um weiter zu entdecken!</string>
+    <string name="dialog_queue_limit_message">Offline-Warteschlange ist voll (max. %1$d Fotos im %2$s-Tarif).</string>
+    <string name="dialog_not_landmark_title">Kein Wahrzeichen</string>
+    <string name="dialog_not_landmark_message">Dies scheint kein Wahrzeichen oder Ort von Interesse zu sein.\n\nBitte versuchen Sie es erneut mit einem Foto eines echten Gebäudes, Denkmals oder historischen Stätte.</string>
+    <string name="dialog_upgrade_plan">Tarif upgraden</string>
+    <string name="dialog_maybe_later">Vielleicht später</string>
+
+    <!-- Analyzing Steps -->
+    <string name="analyzing_step_1">Bildstruktur wird gescannt…</string>
+    <string name="analyzing_step_2">Visuelle Muster werden abgeglichen…</string>
+    <string name="analyzing_step_3">Historische Daten werden identifiziert…</string>
+    <string name="analyzing_step_4">Entdeckungsbericht wird erstellt…</string>
+    <string name="analyzing_waiting">Warte auf Serverantwort…</string>
+    <string name="analyzing_complete">Analyse abgeschlossen</string>
 </resources>

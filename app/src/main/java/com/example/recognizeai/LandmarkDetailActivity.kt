@@ -64,18 +64,25 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-class LandmarkDetailActivity : AppCompatActivity() {
+class LandmarkDetailActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLandmarkDetailBinding
     private var currentRating = 0
     private lateinit var stars: List<ImageView>
     private var retakePhotoUri: Uri? = null
     private var fetchedArData: JSONObject? = null
+    private var fetchedArPhotoUrl: String? = null
     private var isFavorited = false
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
     private var isSpeaking = false
     private var pendingPlay = false
+
+    private val subscriptionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) showShareSheet()
+    }
 
     private val takePictureLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -197,6 +204,7 @@ class LandmarkDetailActivity : AppCompatActivity() {
                     // Load Wikipedia hero image (guard against JSON null)
                     val photoUrl = if (!json.isNull("photo_url")) json.optString("photo_url", "") else ""
                     if (photoUrl.isNotEmpty()) {
+                        fetchedArPhotoUrl = photoUrl
                         Glide.with(this@LandmarkDetailActivity)
                             .load(photoUrl)
                             .centerCrop()
@@ -685,9 +693,9 @@ class LandmarkDetailActivity : AppCompatActivity() {
 
     private fun startSpeaking() {
         val name = intent.getStringExtra("name") ?: ""
-        val p1 = intent.getStringExtra("narrative_p1") ?: ""
-        val quote = intent.getStringExtra("narrative_quote") ?: ""
-        val p2 = intent.getStringExtra("narrative_p2") ?: ""
+        val p1 = binding.tvNarrativeP1.text.toString()
+        val quote = binding.tvNarrativeQuote.text.toString()
+        val p2 = binding.tvNarrativeP2.text.toString()
         val fullText = "$name. $p1 $quote $p2"
         if (fullText.isBlank()) return
         val params = Bundle()
@@ -700,15 +708,9 @@ class LandmarkDetailActivity : AppCompatActivity() {
     private fun applyPlanRestrictions() {
         val session = SessionManager(this)
         if (!session.isPlus) {
-            // Lock audio narration
-            binding.btnPlayAudio.alpha = 0.55f
-            binding.imgPlayIcon.setImageResource(R.drawable.ic_lock)
-            binding.btnPlayAudio.setOnClickListener {
-                startActivity(Intent(this, SubscriptionActivity::class.java))
-            }
             // Lock share card
             binding.btnShare.setOnClickListener {
-                startActivity(Intent(this, SubscriptionActivity::class.java))
+                subscriptionLauncher.launch(Intent(this, SubscriptionActivity::class.java).putExtra(SubscriptionActivity.EXTRA_RETURN_TO, SubscriptionActivity.RETURN_SHARE))
             }
         }
     }
@@ -836,7 +838,10 @@ class LandmarkDetailActivity : AppCompatActivity() {
     }
 
     private fun loadPhotoBitmap(): Bitmap? {
-        val photoUriStr = intent.getStringExtra("photo_uri") ?: return null
+        val photoUriStr = intent.getStringExtra("photo_uri")
+            ?.takeIf { it.isNotEmpty() }
+            ?: fetchedArPhotoUrl
+            ?: return null
         return try {
             if (photoUriStr.startsWith("http")) {
                 val request = Request.Builder().url(photoUriStr).build()
@@ -1098,7 +1103,7 @@ class LandmarkDetailActivity : AppCompatActivity() {
         sheetBinding.tvShareTitle.text = "Share $name"
 
         // Load thumbnail
-        val photoUri = intent.getStringExtra("photo_uri")
+        val photoUri = intent.getStringExtra("photo_uri")?.takeIf { it.isNotEmpty() } ?: fetchedArPhotoUrl
         if (photoUri != null) {
             Glide.with(this).load(Uri.parse(photoUri)).centerCrop().into(sheetBinding.imgShareThumb)
         }

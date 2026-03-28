@@ -14,7 +14,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.example.recognizeai.databinding.ActivityCameraBinding
 import java.io.File
 
-class CameraActivity : AppCompatActivity() {
+class CameraActivity : BaseActivity() {
 
     private lateinit var binding: ActivityCameraBinding
     private var photoUri: Uri? = null

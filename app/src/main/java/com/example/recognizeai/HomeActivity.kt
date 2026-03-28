@@ -19,7 +19,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.example.recognizeai.databinding.ActivityHomeBinding
 import java.io.File
 
-class HomeActivity : AppCompatActivity() {
+class HomeActivity : BaseActivity() {
 
     private lateinit var binding: ActivityHomeBinding
     private var photoUri: Uri? = null

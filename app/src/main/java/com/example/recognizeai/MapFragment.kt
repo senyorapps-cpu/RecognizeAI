@@ -54,6 +54,12 @@ import java.util.concurrent.TimeUnit
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
+    private val subscriptionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) toggleHeatmap()
+    }
+
     private var googleMap: GoogleMap? = null
     private var progressBar: ProgressBar? = null
     private var cardDetail: LinearLayout? = null
@@ -124,7 +130,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (SessionManager(requireContext()).isPlus) {
                 toggleHeatmap()
             } else {
-                startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
+                subscriptionLauncher.launch(Intent(requireContext(), SubscriptionActivity::class.java).putExtra(SubscriptionActivity.EXTRA_RETURN_TO, SubscriptionActivity.RETURN_HEATMAP))
             }
         }
 

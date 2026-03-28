@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
@@ -35,6 +36,12 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class SavedPhotosFragment : Fragment() {
+
+    private val subscriptionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) exportPdf()
+    }
 
     private var _binding: FragmentSavedPhotosBinding? = null
     private val binding get() = _binding!!
@@ -94,7 +101,7 @@ class SavedPhotosFragment : Fragment() {
             if (SessionManager(requireContext()).isPlus) {
                 exportPdf()
             } else {
-                startActivity(Intent(requireContext(), SubscriptionActivity::class.java))
+                subscriptionLauncher.launch(Intent(requireContext(), SubscriptionActivity::class.java).putExtra(SubscriptionActivity.EXTRA_RETURN_TO, SubscriptionActivity.RETURN_PDF))
             }
         }
     }

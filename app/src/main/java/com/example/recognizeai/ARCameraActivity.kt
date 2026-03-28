@@ -38,15 +38,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
-class ARCameraActivity : AppCompatActivity() {
-
-    override fun attachBaseContext(newBase: Context) {
-        val lang = SessionManager(newBase).language
-        val locale = java.util.Locale(lang)
-        val config = newBase.resources.configuration
-        config.setLocale(locale)
-        super.attachBaseContext(newBase.createConfigurationContext(config))
-    }
+class ARCameraActivity : BaseActivity() {
 
     private lateinit var binding: ActivityArCameraBinding
 
@@ -63,7 +55,7 @@ class ARCameraActivity : AppCompatActivity() {
     // Cache last result to skip redundant Gemini calls
     private var cachedResultName = ""
     private var cacheTimestamp = 0L
-    private val CACHE_TTL_MS = 8000L
+    private val CACHE_TTL_MS = 20000L
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)

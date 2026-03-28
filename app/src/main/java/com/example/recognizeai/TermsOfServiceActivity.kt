@@ -6,7 +6,7 @@ import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import com.example.recognizeai.databinding.ActivityTermsOfServiceBinding
 
-class TermsOfServiceActivity : AppCompatActivity() {
+class TermsOfServiceActivity : BaseActivity() {
 
     private lateinit var binding: ActivityTermsOfServiceBinding
 

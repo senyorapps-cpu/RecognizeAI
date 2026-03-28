@@ -31,7 +31,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Choose Your Plan"
+            android:text="@string/sub_title"
             android:textSize="20sp"
             android:fontFamily="@font/plus_jakarta_sans_bold"
             android:textColor="@color/deep_blue"
@@ -58,7 +58,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Unlock the full power of SightAI"
+                android:text="@string/sub_subtitle"
                 android:textSize="14sp"
                 android:fontFamily="@font/plus_jakarta_sans"
                 android:textColor="@color/deep_blue_50"
@@ -78,16 +78,17 @@
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical">
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                        android:layout_weight="1" android:text="Explorer"
+                        android:layout_weight="1" android:text="@string/sub_free_name"
                         android:textSize="18sp" android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:textColor="@color/deep_blue" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Free" android:textSize="18sp" android:fontFamily="@font/plus_jakarta_sans_bold"
+                        android:text="@string/sub_free_price" android:textSize="18sp"
+                        android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:textColor="@color/deep_blue" />
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvFreeCurrent" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:text="Your current plan"
+                    android:layout_height="wrap_content" android:text="@string/sub_current_plan"
                     android:textSize="12sp" android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:textColor="@color/gold_accent" android:layout_marginTop="2dp"
                     android:visibility="gone" />
@@ -97,7 +98,7 @@
                     android:layout_marginBottom="14dp" />
 
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="✓  5 AI scans per day\n✓  Basic landmark details\n✓  20 journal entries max\n✓  Google Maps navigation\n✗  Audio narration\n✗  Share card\n✗  Offline queue (3 max)"
+                    android:text="@string/sub_free_features"
                     android:textSize="13sp" android:fontFamily="@font/plus_jakarta_sans"
                     android:textColor="@color/deep_blue_70" android:lineSpacingMultiplier="1.6" />
 
@@ -120,10 +121,10 @@
                         <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:orientation="horizontal" android:gravity="center_vertical">
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                android:text="Traveler" android:textSize="18sp"
+                                android:text="@string/sub_plus_name" android:textSize="18sp"
                                 android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/white" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                android:text="  POPULAR" android:textSize="10sp"
+                                android:text="@string/sub_popular" android:textSize="10sp"
                                 android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/gold_accent"
                                 android:background="@drawable/bg_popular_badge"
                                 android:paddingStart="8dp" android:paddingEnd="8dp"
@@ -137,14 +138,14 @@
                             android:text="$3.99" android:textSize="20sp"
                             android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/white" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="/ month" android:textSize="11sp"
+                            android:text="@string/sub_per_month" android:textSize="11sp"
                             android:fontFamily="@font/plus_jakarta_sans" android:textColor="#AACCFF"
                             android:layout_gravity="end" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvPlusCurrent" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:text="Your current plan"
+                    android:layout_height="wrap_content" android:text="@string/sub_current_plan"
                     android:textSize="12sp" android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:textColor="@color/gold_accent" android:layout_marginTop="2dp"
                     android:visibility="gone" />
@@ -154,7 +155,7 @@
                     android:layout_marginBottom="14dp" />
 
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="✓  50 AI scans per day\n✓  Unlimited journal\n✓  Audio narration\n✓  Share card generation\n✓  Full nearby places\n✓  Offline queue (20 photos)\n✓  Multi-language AI output"
+                    android:text="@string/sub_plus_features"
                     android:textSize="13sp" android:fontFamily="@font/plus_jakarta_sans"
                     android:textColor="#DDEEFF" android:lineSpacingMultiplier="1.6" />
 
@@ -165,7 +166,7 @@
                     android:layout_marginTop="16dp"
                     android:background="@drawable/bg_white_button"
                     android:gravity="center"
-                    android:text="Upgrade to Traveler"
+                    android:text="@string/sub_upgrade_traveler"
                     android:textColor="@color/deep_blue"
                     android:textSize="15sp"
                     android:fontFamily="@font/plus_jakarta_sans_semibold"
@@ -186,7 +187,7 @@
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical">
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                        android:layout_weight="1" android:text="Globetrotter"
+                        android:layout_weight="1" android:text="@string/sub_pro_name"
                         android:textSize="18sp" android:fontFamily="@font/plus_jakarta_sans_bold"
                         android:textColor="@color/deep_blue" />
                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -195,14 +196,14 @@
                             android:text="$7.99" android:textSize="20sp"
                             android:fontFamily="@font/plus_jakarta_sans_bold" android:textColor="@color/deep_blue" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="/ month" android:textSize="11sp"
+                            android:text="@string/sub_per_month" android:textSize="11sp"
                             android:fontFamily="@font/plus_jakarta_sans" android:textColor="@color/deep_blue_50"
                             android:layout_gravity="end" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvProCurrent" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:text="Your current plan"
+                    android:layout_height="wrap_content" android:text="@string/sub_current_plan"
                     android:textSize="12sp" android:fontFamily="@font/plus_jakarta_sans_medium"
                     android:textColor="@color/gold_accent" android:layout_marginTop="2dp"
                     android:visibility="gone" />
@@ -212,7 +213,7 @@
                     android:layout_marginBottom="14dp" />
 
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="✓  Everything in Traveler\n✓  200 AI scans per day\n✓  Unlimited offline queue\n✓  Priority AI processing\n✓  Early access to new features"
+                    android:text="@string/sub_pro_features"
                     android:textSize="13sp" android:fontFamily="@font/plus_jakarta_sans"
                     android:textColor="@color/deep_blue_70" android:lineSpacingMultiplier="1.6" />
 
@@ -223,7 +224,7 @@
                     android:layout_marginTop="16dp"
                     android:background="@drawable/bg_save_journal_button"
                     android:gravity="center"
-                    android:text="Upgrade to Globetrotter"
+                    android:text="@string/sub_upgrade_globetrotter"
                     android:textColor="@color/white"
                     android:textSize="15sp"
                     android:fontFamily="@font/plus_jakarta_sans_semibold"
@@ -234,7 +235,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Payments processed securely via Google Play.\nCancel anytime from your Play Store subscriptions."
+                android:text="@string/sub_footer"
                 android:textSize="11sp"
                 android:fontFamily="@font/plus_jakarta_sans"
                 android:textColor="@color/deep_blue_50"
