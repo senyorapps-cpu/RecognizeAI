@@ -60,13 +60,14 @@ class HomeFragment : Fragment() {
         setupGreeting()
         fetchLocationAndWeather()
         setupClickListeners()
+        loadLastCapture()
+        loadLikedPlace()
     }
 
     override fun onResume() {
         super.onResume()
         if (_binding != null) {
             loadLastCapture()
-            loadLikedPlace()
         }
     }
 
@@ -182,10 +183,24 @@ class HomeFragment : Fragment() {
                         binding.txtLastCaptureName.text = last.optString("name", "Unknown")
                         binding.txtLastCaptureLocation.text = last.optString("location", "")
 
-                        Glide.with(this@HomeFragment)
-                            .load(imageUrl)
-                            .centerCrop()
-                            .into(binding.imgLastCapture)
+                        val serverId = last.optLong("id", -1L)
+                        val localFile = if (serverId > 0) LocalImageCache.getFile(requireContext(), serverId) else null
+                        val glideReq = Glide.with(this@HomeFragment).load(imageUrl).centerCrop()
+                        if (localFile != null) glideReq.error(Glide.with(this@HomeFragment).load(localFile).centerCrop())
+                        glideReq.into(binding.imgLastCapture)
+
+                        // Proactively cache image locally for offline use
+                        if (serverId > 0 && localFile != null && !localFile.exists() && imageUrl.isNotEmpty()) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                try {
+                                    val bytes = client.newCall(
+                                        Request.Builder().url(imageUrl)
+                                            .header("User-Agent", "SightAI/1.0").get().build()
+                                    ).execute().body?.bytes()
+                                    if (bytes != null) LocalImageCache.save(requireContext(), serverId, bytes)
+                                } catch (_: Exception) {}
+                            }
+                        }
                     } else {
                         loadLastCaptureFromLocal()
                     }
@@ -217,12 +232,14 @@ class HomeFragment : Fragment() {
             binding.txtLastCaptureName.text = last.optString("name", "Unknown")
             binding.txtLastCaptureLocation.text = last.optString("location", "")
 
+            val serverId = last.optLong("server_id", -1L)
+            val localFile = if (serverId > 0) LocalImageCache.getFile(requireContext(), serverId) else null
             val photoUri = last.optString("photo_uri", "")
-            if (photoUri.isNotEmpty()) {
-                Glide.with(this)
-                    .load(Uri.parse(photoUri))
-                    .centerCrop()
-                    .into(binding.imgLastCapture)
+            when {
+                localFile?.exists() == true ->
+                    Glide.with(this).load(localFile).centerCrop().into(binding.imgLastCapture)
+                photoUri.isNotEmpty() ->
+                    Glide.with(this).load(Uri.parse(photoUri)).centerCrop().into(binding.imgLastCapture)
             }
         } else {
             lastCaptureEntry = null
@@ -297,14 +314,10 @@ class HomeFragment : Fragment() {
 
     private fun loadLikedPlace() {
         if (_binding == null) return
-        val session = SessionManager(requireContext())
-        val userId = session.userId
-        val deviceId = session.deviceId
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val url = "${SessionManager.BASE_URL}/api/landmarks/favorites?device_id=$deviceId" +
-                    if (userId > 0) "&user_id=$userId" else ""
+                val url = "${SessionManager.BASE_URL}/api/landmarks/trending"
                 val request = Request.Builder().url(url).get().build()
                 val response = client.newCall(request).execute()
                 val body = response.body?.string() ?: "[]"
@@ -321,11 +334,8 @@ class HomeFragment : Fragment() {
 
                     binding.likedPlacesRow.removeAllViews()
                     val dp = resources.displayMetrics.density
-                    val insets = ViewCompat.getRootWindowInsets(binding.root)
-                    val sysBarBottom = insets?.getInsets(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
-                    val screenH = resources.displayMetrics.heightPixels - sysBarBottom
-                    val cardH = (screenH * 0.25).toInt()
-                    val cardW = (cardH * 0.6).toInt()
+                    val cardH = (160 * dp).toInt()
+                    val cardW = (100 * dp).toInt()
                     val marginEnd = (12 * dp).toInt()
 
                     for (i in 0 until arr.length()) {
@@ -384,20 +394,56 @@ class HomeFragment : Fragment() {
                         }
                         card.addView(nameLabel)
 
-                        // Heart badge top-right
-                        val heart = android.widget.ImageView(requireContext()).apply {
-                            layoutParams = android.widget.FrameLayout.LayoutParams(
-                                (22 * dp).toInt(), (22 * dp).toInt(), android.view.Gravity.TOP or android.view.Gravity.END
-                            ).apply { setMargins(0, (8*dp).toInt(), (8*dp).toInt(), 0) }
-                            setImageResource(R.drawable.ic_favorite_filled)
+                        // Star rating badge top-right
+                        val rating = obj.optInt("rating", 0)
+                        if (rating > 0) {
+                            val starRow = android.widget.LinearLayout(requireContext()).apply {
+                                layoutParams = android.widget.FrameLayout.LayoutParams(
+                                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                                    android.view.Gravity.TOP or android.view.Gravity.START
+                                ).apply { setMargins((8*dp).toInt(), (8*dp).toInt(), 0, 0) }
+                                orientation = android.widget.LinearLayout.HORIZONTAL
+                                background = android.graphics.drawable.GradientDrawable().apply {
+                                    setColor(0xCC000000.toInt())
+                                    cornerRadius = (6 * dp)
+                                }
+                                setPadding((4*dp).toInt(), (2*dp).toInt(), (5*dp).toInt(), (2*dp).toInt())
+                            }
+                            val starIcon = android.widget.ImageView(requireContext()).apply {
+                                layoutParams = android.widget.LinearLayout.LayoutParams(
+                                    (11*dp).toInt(), (11*dp).toInt()
+                                ).apply { setMargins(0, 0, (2*dp).toInt(), 0) }
+                                setImageResource(R.drawable.ic_star_filled)
+                                imageTintList = android.content.res.ColorStateList.valueOf(0xFFFFC107.toInt())
+                            }
+                            val ratingText = android.widget.TextView(requireContext()).apply {
+                                layoutParams = android.widget.LinearLayout.LayoutParams(
+                                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                                )
+                                text = rating.toString()
+                                setTextColor(android.graphics.Color.WHITE)
+                                textSize = 9f
+                                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                                gravity = android.view.Gravity.CENTER_VERTICAL
+                            }
+                            starRow.addView(starIcon)
+                            starRow.addView(ratingText)
+                            card.addView(starRow)
                         }
-                        card.addView(heart)
 
                         val entry = obj
                         card.setOnClickListener { openLikedPlaceDetail(entry) }
 
                         if (imageUrl.isNotEmpty()) {
-                            Glide.with(this@HomeFragment).load(imageUrl).centerCrop().into(img)
+                            val serverId = obj.optLong("id", -1L)
+                            val localFile = LocalImageCache.getFile(requireContext(), serverId)
+                            Glide.with(this@HomeFragment)
+                                .load(imageUrl)
+                                .error(Glide.with(this@HomeFragment).load(localFile).centerCrop())
+                                .centerCrop()
+                                .into(img)
                         }
 
                         binding.likedPlacesRow.addView(card)
@@ -435,8 +481,7 @@ class HomeFragment : Fragment() {
             putExtra("nearby3_category", entry.optString("nearby3_category", ""))
             putExtra("rating", entry.optInt("rating", 0))
             putExtra("language", entry.optString("language", "en"))
-            putExtra("is_favorited", entry.optInt("is_favorited", 1))
-            putExtra("from_home", true)
+            putExtra("from_trending", true)
         }
         startActivity(intent)
     }

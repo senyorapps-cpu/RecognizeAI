@@ -20,7 +20,7 @@
         android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/Theme.SightAI">
 
         <activity
@@ -63,7 +63,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDW_5xgz6Bf83iPIkxUoNZZtgQ0MgO6GYw" />
+            android:value="AIzaSyBEjzs8xzhQ7Xw_5mR7b727rXYMQVPIk8s" />
 
         <receiver
             android:name=".GeofenceBroadcastReceiver"

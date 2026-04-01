@@ -20,7 +20,7 @@
         android:background="#80000000"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingTop="48dp"
+        android:paddingTop="16dp"
         android:paddingBottom="16dp"
         android:paddingHorizontal="16dp">
 

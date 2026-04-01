@@ -624,16 +624,14 @@ app.post("/api/verify-purchase", async (req, res) => {
       subscription = verifyResponse.data;
     } catch (googleError) {
       console.error("[Purchase] Google API error:", googleError.message);
-      // Temporarily bypass Google verification during internal testing (API access not yet granted)
-      console.log("[Purchase] Bypassing Google verification — granting plan directly (internal testing mode)");
-      subscription = { paymentState: 1, expiryTimeMillis: String(Date.now() + 30 * 24 * 60 * 60 * 1000) };
+      return res.status(503).json({ error: "verification_unavailable", message: "Could not verify purchase. Please try again in a moment." });
     }
 
     // ── 2. Check payment was actually received ───────────────────
     // paymentState: 0=pending, 1=received, 2=free trial, 3=deferred
     const paymentState = subscription.paymentState;
     if (paymentState !== 1 && paymentState !== 2) {
-      console.warn(`[Purchase] Payment not received. paymentState=${paymentState}, token=${purchaseToken}`);
+      console.warn(`[Purchase] Payment not received. paymentState=${paymentState}`);
       return res.status(402).json({
         error: "payment_not_received",
         message: "Payment is pending or was not completed."
@@ -643,7 +641,7 @@ app.post("/api/verify-purchase", async (req, res) => {
     // ── 3. Check subscription has not expired ────────────────────
     const expiryMs = parseInt(subscription.expiryTimeMillis || "0");
     if (expiryMs < Date.now()) {
-      console.warn(`[Purchase] Subscription expired. expiry=${new Date(expiryMs)}, token=${purchaseToken}`);
+      console.warn(`[Purchase] Subscription expired. expiry=${new Date(expiryMs)}`);
       return res.status(402).json({ error: "subscription_expired", message: "Subscription has expired." });
     }
 
@@ -658,7 +656,7 @@ app.post("/api/verify-purchase", async (req, res) => {
       const sameUser = (requestingId && existing.id === requestingId) ||
                        (deviceId && existing.device_id === deviceId);
       if (!sameUser) {
-        console.error(`[Purchase] Token reuse attempt! token=${purchaseToken}, existing_user=${existing.id}, requester=${userId || deviceId}`);
+        console.error(`[Purchase] Token reuse attempt! existing_user=${existing.id}`);
         return res.status(403).json({ error: "token_already_used", message: "Purchase token already associated with another account." });
       }
     }
@@ -930,7 +928,7 @@ app.post("/api/landmarks/save-from-ar", async (req, res) => {
       ]
     );
     const newBadges = await checkAndAwardBadges(user_id ? parseInt(user_id) : null, device_id || null);
-    res.json({ success: true, id: result.rows[0].id, new_badges: newBadges });
+    res.json({ success: true, id: result.rows[0].id, image_url: wikiImageUrl || "", new_badges: newBadges });
   } catch (e) {
     console.error("[Save AR] Error:", e.message);
     res.status(500).json({ error: "Failed to save landmark" });
@@ -1160,7 +1158,13 @@ If it DOES show a real-world landmark or place, respond ONLY with a JSON object 
     }
     const latitude = req.body?.latitude ? parseFloat(req.body.latitude) : null;
     const longitude = req.body?.longitude ? parseFloat(req.body.longitude) : null;
-    console.log("Received fields - user_id:", userId, "device_id:", deviceId, "language:", language, "latitude:", req.body?.latitude, "longitude:", req.body?.longitude);
+    if (latitude !== null && (latitude < -90 || latitude > 90)) {
+      return res.status(400).json({ error: "Invalid latitude" });
+    }
+    if (longitude !== null && (longitude < -180 || longitude > 180)) {
+      return res.status(400).json({ error: "Invalid longitude" });
+    }
+    console.log("Received fields - language:", language, "has_location:", !!(req.body?.latitude && req.body?.longitude));
 
     const landmarkLat = (typeof parsed.landmark_lat === "number" && isFinite(parsed.landmark_lat)) ? parsed.landmark_lat : null;
     const landmarkLng = (typeof parsed.landmark_lng === "number" && isFinite(parsed.landmark_lng)) ? parsed.landmark_lng : null;
@@ -1350,7 +1354,13 @@ async function verifyLandmarkOwner(landmarkId, userId, deviceId) {
   const result = await pool.query("SELECT user_id, device_id FROM landmarks WHERE id = $1", [landmarkId]);
   if (result.rows.length === 0) return { found: false };
   const row = result.rows[0];
-  const owned = (userId && row.user_id === parseInt(userId)) || (deviceId && row.device_id === deviceId);
+  // Treat userId=-1 (app default for guest) as "not logged in"
+  const intUserId = (userId && parseInt(userId) > 0) ? parseInt(userId) : null;
+  // If logged-in user: verify by user_id only (prevent cross-user deletion on shared device)
+  // If guest (no userId): verify by device_id
+  const owned = intUserId
+    ? row.user_id === intUserId
+    : (deviceId && row.device_id === deviceId);
   return { found: true, owned };
 }
 
@@ -1520,7 +1530,26 @@ app.get("/api/landmarks/heatmap", async (req, res) => {
   }
 });
 
-// Trending Spots — all users' favorited AR landmarks, shuffled
+// Trending Spots — all users' landmarks rated > 0, sorted by rating DESC, max 12
+app.get("/api/landmarks/trending", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM landmarks WHERE rating > 0 AND is_ar = 1 ORDER BY rating DESC LIMIT 12"
+    );
+    const rows = result.rows.map((row) => {
+      row.image_url = row.image_filename
+        ? (row.image_filename.startsWith("http") ? row.image_filename : `/api/uploads/${row.image_filename}`)
+        : "";
+      return row;
+    });
+    res.json(rows);
+  } catch (error) {
+    console.error("Trending error:", error);
+    res.status(500).json({ error: "Failed to fetch trending landmarks" });
+  }
+});
+
+// Favorites — current user's favorited landmarks
 app.get("/api/landmarks/favorites", async (req, res) => {
   try {
     const userId = req.query.user_id ? parseInt(req.query.user_id) : null;
@@ -1595,9 +1624,10 @@ app.get("/api/user/:id/landmarks", async (req, res) => {
     let sql;
     let params;
 
-    // Match landmarks by user_id OR device_id (covers guest + google on same device)
-    sql = "SELECT DISTINCT ON (id) * FROM landmarks WHERE (user_id = $1 OR device_id = $2)";
-    params = [userId, deviceId];
+    // Logged-in users: fetch by user_id only (prevents cross-user leakage on shared devices)
+    // Guest fallback: fetch by device_id only
+    sql = "SELECT DISTINCT ON (id) * FROM landmarks WHERE user_id = $1";
+    params = [userId];
 
     if (savedOnly) sql += " AND is_saved = 1";
     sql += " ORDER BY id DESC";
@@ -1942,7 +1972,7 @@ app.get("/api/places/photo", async (req, res) => {
 });
 
 // ── Backfill missing Wikipedia images for existing NULL records ───────────────
-app.post("/api/admin/backfill-images", async (req, res) => {
+app.post("/api/admin/backfill-images", adminAuth, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT id, name, location FROM landmarks WHERE image_filename IS NULL OR image_filename = ''"
@@ -1977,7 +2007,7 @@ app.get("/api/uploads/:filename", (req, res) => {
 
 // ── Contact endpoint ────────────────────────────────────────────
 
-app.post("/api/contact", upload.single("screenshot"), async (req, res) => {
+app.post("/api/contact", authLimiter, upload.single("screenshot"), async (req, res) => {
   try {
     const { topic, message } = req.body;
     if (!topic || !message) {

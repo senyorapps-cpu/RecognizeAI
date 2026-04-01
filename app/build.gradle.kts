@@ -1,7 +1,14 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
+}
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
 }
 
 android {
@@ -12,8 +19,8 @@ android {
         applicationId = "online.mnaks.sightai"
         minSdk = 31
         targetSdk = 35
-        versionCode = 13
-        versionName = "2.1"
+        versionCode = 34
+        versionName = "2.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -21,9 +28,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("../main-keystore.jks")
-            storePassword = "AAKK1986ak\$\$"
-            keyAlias = "master"
-            keyPassword = "AAKK1986ak\$\$"
+            storePassword = localProps.getProperty("KEY_STORE_PASSWORD", "")
+            keyAlias = localProps.getProperty("KEY_ALIAS", "")
+            keyPassword = localProps.getProperty("KEY_PASSWORD", "")
         }
     }
 

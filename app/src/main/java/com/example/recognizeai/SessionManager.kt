@@ -42,7 +42,7 @@ class SessionManager(context: Context) {
         private const val KEY_LIMIT_FREE_AUDIO    = "limit_free_audio"
         private const val KEY_LIMIT_FREE_SHARE    = "limit_free_share"
 
-        const val BASE_URL = "http://mnaks.online:3001"
+        const val BASE_URL = "https://sightai.mnaks.online"
     }
 
     fun saveUser(

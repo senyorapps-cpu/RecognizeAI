@@ -140,8 +140,15 @@ class LandmarkDetailActivity : BaseActivity() {
         val fromSaved = intent.getBooleanExtra("from_saved", false)
         val fromHome = intent.getBooleanExtra("from_home", false)
         val fromAr = intent.getBooleanExtra("from_ar", false)
+        val fromTrending = intent.getBooleanExtra("from_trending", false)
         if (fromSaved || fromHome) {
             binding.bottomActionBar.visibility = View.GONE
+        }
+        if (fromTrending) {
+            binding.bottomActionBar.visibility = View.GONE
+            binding.btnFavorite.visibility = View.GONE
+            // Make stars read-only
+            for (star in stars) star.setOnClickListener(null)
         }
 
         // If opened from AR, fetch full landmark details from server
@@ -277,6 +284,68 @@ class LandmarkDetailActivity : BaseActivity() {
                 val response = httpClient.newCall(request).execute()
                 val json = JSONObject(response.body?.string() ?: "{}")
 
+                // Save Wikipedia image locally for offline viewing
+                if (json.optBoolean("success", false)) {
+                    val arServerId = json.optLong("id", -1L)
+                    val wikiUrl = json.optString("image_url", "").takeIf { it.isNotEmpty() }
+                        ?: fetchedArPhotoUrl
+                    if (arServerId > 0 && !wikiUrl.isNullOrEmpty()) {
+                        try {
+                            val imgBytes = httpClient.newCall(
+                                okhttp3.Request.Builder().url(wikiUrl)
+                                    .header("User-Agent", "SightAI/1.0")
+                                    .get().build()
+                            ).execute().body?.bytes()
+                            if (imgBytes != null) {
+                                LocalImageCache.save(this@LandmarkDetailActivity, arServerId, imgBytes)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                // Save AR landmark to SharedPreferences so it appears offline
+                if (json.optBoolean("success", false)) {
+                    val arServerId = json.optLong("id", -1L)
+                    val localFile = if (arServerId > 0) LocalImageCache.getFile(this@LandmarkDetailActivity, arServerId) else null
+                    val localPhotoUri = if (localFile?.exists() == true) localFile.absolutePath
+                        else (json.optString("image_url", "").takeIf { it.isNotEmpty() } ?: fetchedArPhotoUrl ?: "")
+                    val data = fetchedArData
+                    val entry = org.json.JSONObject().apply {
+                        put("server_id", arServerId)
+                        put("name", intent.getStringExtra("name") ?: "")
+                        put("location", intent.getStringExtra("location") ?: "")
+                        put("photo_uri", localPhotoUri)
+                        put("year_built", data?.optString("year_built") ?: intent.getStringExtra("year_built") ?: "")
+                        put("status", data?.optString("status") ?: "")
+                        put("architect", data?.optString("architect") ?: "")
+                        put("capacity", data?.optString("capacity") ?: "")
+                        put("narrative_p1", data?.optString("narrative_p1") ?: "")
+                        put("narrative_quote", data?.optString("narrative_quote") ?: "")
+                        put("narrative_p2", data?.optString("narrative_p2") ?: "")
+                        put("nearby1_name", data?.optString("nearby1_name") ?: "")
+                        put("nearby1_category", data?.optString("nearby1_category") ?: "")
+                        put("nearby2_name", data?.optString("nearby2_name") ?: "")
+                        put("nearby2_category", data?.optString("nearby2_category") ?: "")
+                        put("nearby3_name", data?.optString("nearby3_name") ?: "")
+                        put("nearby3_category", data?.optString("nearby3_category") ?: "")
+                        put("rating", currentRating)
+                        put("language", SessionManager(this@LandmarkDetailActivity).language.ifEmpty { "en" })
+                        put("created_at", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).format(java.util.Date()))
+                        put("is_saved", true)
+                        put("is_ar", 1)
+                    }
+                    val prefs = getSharedPreferences("recognizeai_landmarks", MODE_PRIVATE)
+                    val arr = org.json.JSONArray(prefs.getString("landmarks", "[]"))
+                    var alreadySaved = false
+                    for (k in 0 until arr.length()) {
+                        if (arr.getJSONObject(k).optLong("server_id", -1L) == arServerId) { alreadySaved = true; break }
+                    }
+                    if (!alreadySaved) {
+                        arr.put(entry)
+                        prefs.edit().putString("landmarks", arr.toString()).apply()
+                    }
+                }
+
                 withContext(Dispatchers.Main) {
                     if (json.optBoolean("success", false)) {
                         showNewBadges(json.optJSONArray("new_badges"))
@@ -307,14 +376,22 @@ class LandmarkDetailActivity : BaseActivity() {
 
     private fun loadHeroImage() {
         val photoUri = intent.getStringExtra("photo_uri")?.takeIf { it.isNotEmpty() }
-        if (photoUri != null) {
-            Glide.with(this)
-                .load(Uri.parse(photoUri))
-                .centerCrop()
-                .into(binding.imgHero)
-        } else {
-            // No photo yet — show gradient placeholder; AR will replace it with Wikipedia photo
-            binding.imgHero.setBackgroundResource(R.drawable.bg_gradient)
+        val serverId = intent.getLongExtra("server_id", -1L)
+        val localFile = if (serverId > 0) LocalImageCache.getFile(this, serverId) else null
+
+        when {
+            photoUri != null -> {
+                val request = Glide.with(this).load(Uri.parse(photoUri)).centerCrop()
+                if (localFile != null) request.error(Glide.with(this).load(localFile).centerCrop())
+                request.into(binding.imgHero)
+            }
+            localFile != null -> {
+                Glide.with(this).load(localFile).centerCrop().into(binding.imgHero)
+            }
+            else -> {
+                // No photo yet — show gradient placeholder; AR will replace it with Wikipedia photo
+                binding.imgHero.setBackgroundResource(R.drawable.bg_gradient)
+            }
         }
     }
 
@@ -1215,7 +1292,10 @@ class LandmarkDetailActivity : BaseActivity() {
     private fun saveImageToGallery() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val photoUriStr = intent.getStringExtra("photo_uri") ?: throw Exception("No photo")
+                val photoUriStr = intent.getStringExtra("photo_uri")
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: fetchedArPhotoUrl
+                    ?: throw Exception("No photo")
                 val photoUri = Uri.parse(photoUriStr)
                 val landmarkName = intent.getStringExtra("name") ?: "landmark"
                 val fileName = "RecognizeAI_${landmarkName.replace(" ", "_")}_${System.currentTimeMillis()}.jpg"

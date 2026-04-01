@@ -89,19 +89,14 @@ class MainActivity : BaseActivity() {
 
         // Draw behind system bars so nav bar insets can be applied manually
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        val navBarBasePadding = binding.bottomNavBar.paddingBottom
-        val navBarBaseHeight = binding.bottomNavBar.layoutParams.height
         ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNavBar) { view, insets ->
             val systemNavHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             view.setPadding(
                 view.paddingLeft,
                 view.paddingTop,
                 view.paddingRight,
-                navBarBasePadding + systemNavHeight
+                systemNavHeight
             )
-            val params = view.layoutParams
-            params.height = navBarBaseHeight + systemNavHeight
-            view.layoutParams = params
             insets
         }
 
@@ -148,6 +143,7 @@ class MainActivity : BaseActivity() {
 
     private var syncDialogShowing = false
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var permissionsRequested = false
 
     override fun onResume() {
         super.onResume()
@@ -157,6 +153,8 @@ class MainActivity : BaseActivity() {
     }
 
     private fun requestGeofencePermissionsIfNeeded() {
+        if (permissionsRequested) return
+        permissionsRequested = true
         // Android 13+: ask for notification permission
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -233,6 +231,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun checkAndShowSyncDialog() {
+        if (isFinishing || isDestroyed) return
         val pendingManager = PendingAnalysisManager(this)
         if (pendingManager.hasPendingItems() && NetworkUtils.isOnline(this) && !syncDialogShowing) {
             val count = pendingManager.getPendingCount()
@@ -288,7 +287,12 @@ class MainActivity : BaseActivity() {
                 syncDialogShowing = false
             }
 
-            dialog.show()
+            try {
+                dialog.show()
+            } catch (e: Exception) {
+                syncDialogShowing = false
+                android.util.Log.e("MainActivity", "Failed to show sync dialog", e)
+            }
         }
     }
 

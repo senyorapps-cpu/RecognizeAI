@@ -165,11 +165,6 @@ class SavedPhotosFragment : Fragment() {
         )
     }
 
-    override fun onResume() {
-        super.onResume()
-        loadSavedItems()
-    }
-
     fun refreshData() {
         loadSavedItems()
     }
@@ -329,6 +324,22 @@ class SavedPhotosFragment : Fragment() {
                             landmarkLng = obj.optDouble("landmark_lng", 0.0)
                         )
                     )
+                }
+
+                // Proactively cache any missing images for offline use
+                for (item in items) {
+                    if (item.serverId > 0 && item.imageUrl.isNotEmpty()) {
+                        val f = LocalImageCache.getFile(requireContext(), item.serverId)
+                        if (!f.exists()) {
+                            try {
+                                val bytes = client.newCall(
+                                    okhttp3.Request.Builder().url(item.imageUrl)
+                                        .header("User-Agent", "SightAI/1.0").get().build()
+                                ).execute().body?.bytes()
+                                if (bytes != null) LocalImageCache.save(requireContext(), item.serverId, bytes)
+                            } catch (_: Exception) {}
+                        }
+                    }
                 }
 
                 withContext(Dispatchers.Main) {
@@ -538,8 +549,10 @@ class SavedPhotosFragment : Fragment() {
             val heightPx = (heightDp * holder.itemView.resources.displayMetrics.density).toInt()
             holder.imgSaved.layoutParams.height = heightPx
 
+            val localFile = LocalImageCache.getFile(holder.itemView.context, item.serverId)
             Glide.with(holder.itemView.context)
                 .load(item.imageUrl)
+                .error(Glide.with(holder.itemView.context).load(localFile).centerCrop())
                 .centerCrop()
                 .into(holder.imgSaved)
 

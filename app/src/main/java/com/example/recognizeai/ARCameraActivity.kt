@@ -23,6 +23,9 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.example.recognizeai.databinding.ActivityArCameraBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +58,7 @@ class ARCameraActivity : BaseActivity() {
     // Cache last result to skip redundant Gemini calls
     private var cachedResultName = ""
     private var cacheTimestamp = 0L
-    private val CACHE_TTL_MS = 20000L
+    private val CACHE_TTL_MS = 8000L
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
@@ -81,6 +84,18 @@ class ARCameraActivity : BaseActivity() {
 
         binding = ActivityArCameraBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Draw behind system bars
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val dp16 = (16 * resources.displayMetrics.density).toInt()
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // Top bar: replace hardcoded 48dp with real status bar height
+            binding.topBar.setPadding(dp16, systemBars.top + dp16, dp16, dp16)
+            // Bottom card: add navigation bar height to existing 16dp padding
+            binding.overlayCard.setPadding(dp16, dp16, dp16, dp16 + systemBars.bottom)
+            insets
+        }
 
         binding.tvArPlan.text = session.planDisplayName
 

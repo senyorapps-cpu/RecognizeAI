@@ -494,6 +494,12 @@ class AnalyzingActivity : BaseActivity() {
                     return@launch
                 }
 
+                // Save image locally for offline viewing
+                val serverId = json.optLong("id", -1L)
+                if (serverId > 0) {
+                    LocalImageCache.save(this@AnalyzingActivity, serverId, imageBytes)
+                }
+
                 withContext(Dispatchers.Main) {
                     // Update local scan count from server response
                     val newScansToday = json.optInt("scans_today", -1)
