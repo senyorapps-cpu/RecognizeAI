@@ -25,3 +25,6 @@ nul
 
 # Node modules
 node_modules/
+
+# Claude Code local settings (records command history — never commit)
+.claude/settings.local.json
